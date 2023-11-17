@@ -26,3 +26,12 @@ AP-- Ingestion --> MAS[MAPHSA Arches Server]
 
 ## Major Update History
 * 11/17/2023 - Initial commit. SICG data support is built-in.
+
+### Sample Run Commands
+
+```commandline
+python command.py database_interface build_database
+python command.py arches load_concepts -i ~/archesExportData/maphsa-pkg-master/reference_data/*.xml
+python command.py parse sicg -i sources/iphan_sites.csv
+
+```
