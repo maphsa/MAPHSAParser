@@ -1,0 +1,4 @@
+INSERT INTO public.hydro_info(
+	id, hydro_type, hydro_name, env_assessment_id)
+	VALUES (DEFAULT, '{{hydro_type}}', '{{hydro_name}}', '{{env_assessment_id}}')
+	RETURNING id;

@@ -1,0 +1,3 @@
+INSERT INTO public.arch_ass(id, her_maphsa_id, prev_res_act, her_morph, her_shape, her_loc_orient, o_arch_cert)
+VALUES (DEFAULT, {{her_maphsa_id}}, {{prev_res_act}}, {{her_morph}}, {{her_shape}}, {{her_loc_orient}}, {{o_arch_cert}})
+RETURNING id;

@@ -1,0 +1,4 @@
+INSERT INTO public.built_comp(
+	id, comp_mat, comp_const_tech, her_maphsa_id, comp_type)
+	VALUES (DEFAULT, {{comp_mat}}, {{comp_const_tech}}, {{her_maphsa_id}}, {{comp_type}})
+RETURNING id;

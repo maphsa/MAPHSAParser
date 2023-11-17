@@ -1,0 +1,3 @@
+INSERT INTO public.her_loc_sum(id, gen_descr, her_maphsa_id)
+VALUES (DEFAULT, '{{ gen_descr }}', {{  her_maphsa_id  }})
+RETURNING id;

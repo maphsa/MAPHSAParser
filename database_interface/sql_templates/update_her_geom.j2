@@ -1,0 +1,1 @@
+UPDATE public.her_geom SET wkb_geometry=ST_GeomFromText('POINT({{long}} {{lat}})', 4326) WHERE id_loc_ = {{her_geom_id}};
