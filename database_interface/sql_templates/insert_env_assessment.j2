@@ -1,0 +1,4 @@
+INSERT INTO public.env_assessment(
+	id, topo_type, lcov_type, bedr_geo, soil_class, l_use_type, her_maphsa_id)
+	VALUES (DEFAULT, {{topo_type}}, {{lcov_type}}, {{bedr_geo}}, {{soil_class}}, {{l_use_type}}, {{her_maphsa_id}})
+	RETURNING id;

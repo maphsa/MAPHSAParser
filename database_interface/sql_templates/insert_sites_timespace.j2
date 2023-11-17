@@ -1,0 +1,4 @@
+INSERT INTO public.sites_timespace(
+	id, from_date, to_date, period_cert, arch_ass_id)
+	VALUES (DEFAULT, INTERVAL '{{  from_year  }} years ago', INTERVAL '{{  to_year  }} years ago', {{  period_cert  }}, {{  arch_ass_id  }})
+	RETURNING id;

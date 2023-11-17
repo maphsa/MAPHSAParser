@@ -1,0 +1,3 @@
+MIN_COLUMN_VALUE = 10
+
+NAME_NEGATIVES = ('Não informado',)

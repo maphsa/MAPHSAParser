@@ -1,0 +1,4 @@
+INSERT INTO public.her_feature(
+	id, feat_type, feat_count, her_maphsa_id)
+	VALUES (DEFAULT, {{feat_type}}, {{feat_count}}, {{her_maphsa_id}})
+RETURNING ID;

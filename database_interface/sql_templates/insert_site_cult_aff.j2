@@ -1,0 +1,3 @@
+INSERT INTO public.site_cult_aff(id, cult_aff, cult_aff_certainty, arch_ass_id)
+	VALUES (DEFAULT, {{cult_aff}}, {{cult_aff_certainty}}, {{arch_ass_id}})
+	RETURNING id;

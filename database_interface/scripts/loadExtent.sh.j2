@@ -1,0 +1,1 @@
+shp2pgsql -s EPSG:{{CRS}} -c -D -I {{shapefile_url}} {{schema_name}}.{{table_name}} |  psql -d {{db_name}} -h {{db_url}} -U {{username}}

@@ -1,0 +1,4 @@
+INSERT INTO public.her_loc_meas(
+	id, her_dimen, her_meas_unit, her_meas_value, her_meas_type, arch_ass_id)
+	VALUES (DEFAULT, {{her_dimen}}, {{her_meas_unit}}, {{her_meas_value}}, {{her_meas_type}}, {{arch_ass_id}})
+RETURNING id;

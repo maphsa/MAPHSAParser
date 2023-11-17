@@ -1,0 +1,4 @@
+INSERT INTO public.her_find(
+	id, art_cat_concept_list_id, her_maphsa_id)
+	VALUES (DEFAULT, {{art_cat_concept_list_id}}, {{her_maphsa_id}})
+RETURNING id;

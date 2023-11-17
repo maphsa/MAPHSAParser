@@ -1,0 +1,1 @@
+SELECT id FROM public.grid WHERE grid_id LIKE 'Placeholder_grid';
