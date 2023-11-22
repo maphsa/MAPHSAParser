@@ -12,8 +12,8 @@ The projected architecture forsees the pipeline to funnel data to both of the da
 graph TD
 AMP[\Abstract MAPHSA Parser\] -.-> SMPA[/Specialized MAPHSA Parser A/]
 AMP -.-> SMPB[/Specialized MAPHSA Parser B/]
-SHDA[(Source Heritage Data Souce A)] -- Data Parsing --> SMPA
-SHDB[(Source Heritage Data Souce B)] -- Data Parsing --> SMPB
+SHDA[(Heritage Data Source A)] -- Data Parsing --> SMPA
+SHDB[(Heritage Data Source B)] -- Data Parsing --> SMPB
 SMPA-- Data Ingestion --> CMQGISD[(Centralized MAPHSA QGIS Database)]
 CMQGISD <-- Data Interface --> MQGISF[MAPHSA QGIS User Experience]
 MQGISF <-- Site Browsing --> PU(Project User)
