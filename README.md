@@ -15,9 +15,14 @@ AMP -.-> SMPB[/Specialized MAPHSA Parser B/]
 SHDA[(Source Heritage Data Souce A)] -- Data Parsing --> SMPA
 SHDB[(Source Heritage Data Souce B)] -- Data Parsing --> SMPB
 SMPA-- Data Ingestion --> CMQGISD[(Centralized MAPHSA QGIS Database)]
+CMQGISD <-- Data Interface --> MQGISF[MAPHSA QGIS User Experience]
+MQGISF <-- Site Browsing --> PU(Project User)
 SMPB-- Data Ingestion --> CMQGISD
 CMQGISD-- Structured Extraction -->AP[/MAPHSA Arches Parser/]
-AP-- Ingestion --> MAS[MAPHSA Arches Server]
+AP-- Ingestion --> MAD[(MAPHSA Arches Database)]
+MAD <-- Data Interface --> MAS[MAPHSA Arches Server]
+MAS[MAPHSA Arches Server] <-- Site Browsing --> EU(End User)
+
 
 ```
 
