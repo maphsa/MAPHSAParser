@@ -458,8 +458,8 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
 
     # Heritage Location Measurement
 
-    def insert_measurement(source_value: int, dimension: str, measurement_unit: str, her_meas_type: int):
-
+    def insert_measurement(source_value: float, dimension: str, measurement_unit: str, her_meas_type: int):
+        source_value = float(source_value)
         if not pd.isna(source_value) and source_value != 0:
             her_dimen = DatabaseInterface.get_concept_id_mappings()['Dimension'][dimension]
             her_meas_unit = DatabaseInterface.get_concept_id_mappings()['Measurement Unit'][measurement_unit]
