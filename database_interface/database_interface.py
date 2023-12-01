@@ -1,10 +1,13 @@
+import argparse
 import subprocess
+import types
 
 import psycopg2
-
 from psycopg2.errors import SyntaxError
-import argparse
 from jinja2 import Template
+import json
+from uuid import UUID
+import re
 
 import database_interface
 from database_interface import db_settings
@@ -13,7 +16,7 @@ from exceptions.exceptions import MAPHSAParseInsertionException
 
 class DatabaseInterface:
     _connection = None
-    _source_id_mappings = None
+    _origin_id_mappings = None
     _concept_id_mappings = None
     _placeholder_entity_id_mappings = {}
 
@@ -214,23 +217,6 @@ class DatabaseInterface:
             print(e)
 
     @classmethod
-    def get_source_id_mappings(cls):
-
-        if cls._source_id_mappings is None:
-            select_sources_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/select_sources.j2", 'r').read()
-            select_sources_template = Template(select_sources_string)
-            select_query = select_sources_template.render()
-
-            cursor = cls.get_connection_cursor()
-            cursor.execute(select_query)
-            result = cursor.fetchall()
-
-            source_id_mappings = {r[1]: r[0] for r in result}
-            cls._source_id_mappings = source_id_mappings
-
-        return cls._source_id_mappings
-
-    @classmethod
     def clean_insert_data(cls, target_data: dict) -> dict:
         for (k, v) in target_data.items():
             if type(v) is str:
@@ -254,6 +240,42 @@ class DatabaseInterface:
                                                  parse_data=target_data))
         curs.close()
         return entity_id
+
+    @classmethod
+    def verify_origin(cls, source_meta: dict) -> bool:
+        select_data_origins_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/select_data_origins.j2", 'r').read()
+        select_data_origins_template = Template(select_data_origins_string)
+        select_query = select_data_origins_template.render({'name_string': source_meta['name']})
+
+        cursor = cls.get_connection_cursor()
+        cursor.execute(select_query)
+        result = cursor.fetchall()
+        return len(result) > 0
+
+    @classmethod
+    def add_origin(cls, source_meta: dict):
+        select_data_origins_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_data_origin.j2", 'r').read()
+        select_data_origins_template = Template(select_data_origins_string)
+
+        # Using IVI's soulution from https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
+        class SourceMetaEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, UUID):
+                    return obj.hex
+                if isinstance(obj, types.ModuleType):
+                    return re.search("module '([A-z_.]*)'", obj.__str__()).group(1)
+                return json.JSONEncoder.default(self, obj)
+
+        select_query = select_data_origins_template.render(
+            {
+                'name_string': source_meta['name'],
+                'json_data': json.dumps(source_meta, cls=SourceMetaEncoder)
+            }
+        )
+
+        cursor = cls.get_connection_cursor()
+        cursor.execute(select_query)
+        return
 
     @classmethod
     def run_script(cls, script_name: str, target_data: dict, fetch_return: bool = False):

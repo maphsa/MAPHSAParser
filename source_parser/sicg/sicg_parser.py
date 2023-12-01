@@ -1,6 +1,7 @@
 from functools import reduce
 
 import numpy as np
+import pandas
 import pandas as pd
 from io import StringIO
 import pathlib
@@ -32,7 +33,16 @@ def create_input_dataframes(input_file: pathlib.Path) -> pd.DataFrame:
     return file_data
 
 
+def set_column_to_float(dataframe: pandas.DataFrame, column_name: str):
+    if dataframe[column_name].dtypes != 'float64':
+        return dataframe[column_name].apply(lambda x: float(x.split()[0].replace(',', '.')))
+    else:
+        return dataframe[column_name]
+
+
 def clean_input_dataframe(input_dataframe: pd.DataFrame) -> pd.DataFrame:
+    input_dataframe['X'] = input_dataframe['X'] + 2
+
     input_dataframe = input_dataframe.replace('', np.NAN)
     input_dataframe = input_dataframe.replace('NA', np.NAN)
     input_dataframe = input_dataframe.dropna(axis=1, how='all')
@@ -43,6 +53,10 @@ def clean_input_dataframe(input_dataframe: pd.DataFrame) -> pd.DataFrame:
             artifact_columns.append(col)
 
     input_dataframe = input_dataframe.drop(artifact_columns, axis=1)
+
+    # TODO Some oddity happening here with input csv and panda datatypes, keep an eye
+    input_dataframe['Latitude'] = set_column_to_float(input_dataframe, 'Latitude')
+    input_dataframe['Longitude'] = set_column_to_float(input_dataframe, 'Longitude')
 
     return input_dataframe
 
@@ -67,7 +81,11 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
     popular_name = sicg_site_series['Nome.popular']
     uuid = id_cipher.generate_entity_uuid5(sicg_site_series,
                                            source_parser.source_meta[source_parser.ExistingSources.sicg.value])
-    source_id = DatabaseInterface.get_source_id_mappings()[source_meta['source_description']]
+
+    source_id = DatabaseInterface.insert_entity('her_source', {
+        'data_origin_name': source_meta['name'],
+        'location': f"Line {sicg_site_series['X']}"
+    })
 
     her_maphsa_id = DatabaseInterface.insert_entity('her_maphsa', {
         'uuid': uuid,
@@ -459,7 +477,9 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     # Heritage Location Measurement
 
     def insert_measurement(source_value: float, dimension: str, measurement_unit: str, her_meas_type: int):
+
         source_value = float(source_value)
+
         if not pd.isna(source_value) and source_value != 0:
             her_dimen = DatabaseInterface.get_concept_id_mappings()['Dimension'][dimension]
             her_meas_unit = DatabaseInterface.get_concept_id_mappings()['Measurement Unit'][measurement_unit]
@@ -490,9 +510,23 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
             measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type'][
                 'Unknown-Recorded From Legacy Data']
 
-    insert_measurement(sicg_site_series['comprimento'], 'Length', 'Meters (m)', measurement_type)
-    insert_measurement(sicg_site_series['largura'], 'Breadth/Width', 'Meters (m)', measurement_type)
-    insert_measurement(sicg_site_series['area'], 'Area', 'Square Meters (m2)', measurement_type)
+    for source_measurement_field in [
+        ('comprimento', 'Length', 'Meters (m)'),
+        ('largura', 'Breadth/Width', 'Meters (m)'),
+        ('area', 'Area', 'Square Meters (m2)')
+    ]:
+        try:
+            insert_measurement(
+                sicg_site_series[source_measurement_field[0]],
+                source_measurement_field[1],
+                source_measurement_field[2],
+                measurement_type)
+
+        except ValueError as ve:
+            MapperManager.add_missing_value(f"{sicg_site_series[source_measurement_field[0]]}:{source_measurement_field[1]}:{source_measurement_field[2]}",
+                                            f"{source_meta['name']}:{sicg_site_series['X']}:{source_measurement_field}",
+                                            'her_loc_meas.her_meas_value')
+            continue
 
 
 def parse_built_comp(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
@@ -676,8 +710,19 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
     })
 
 
+def verify_data_origin(source_meta: dict):
+    return DatabaseInterface.verify_origin(source_meta)
+
+
+def add_data_origin(source_meta: dict):
+    DatabaseInterface.add_origin(source_meta)
+
+
 def process_input(input_files, source_meta: dict):
     data_frame_batch = {in_file.stem: create_input_dataframes(in_file) for in_file in input_files}
+
+    if not verify_data_origin(source_meta):
+        add_data_origin(source_meta)
 
     for (input_resource, input_data) in data_frame_batch.items():
         input_data = clean_input_dataframe(input_data)

@@ -1,5 +1,5 @@
 -- Created by Vertabelo (http://vertabelo.com)
--- Last modification date: 2023-11-15 09:29:33.35
+-- Last modification date: 2023-11-28 10:37:35.228
 
 -- tables
 -- Table: arch_ass
@@ -66,6 +66,13 @@ CREATE TABLE concept_thesaurus (
     name varchar(256)  NOT NULL,
     description varchar(512)  NOT NULL,
     CONSTRAINT concept_thesaurus_pk PRIMARY KEY (id)
+);
+
+-- Table: data_origin
+CREATE TABLE data_origin (
+    name varchar(128)  NOT NULL,
+    meta_data jsonb  NOT NULL,
+    CONSTRAINT id PRIMARY KEY (name)
 );
 
 -- Table: disturbance_event
@@ -217,7 +224,8 @@ CREATE TABLE her_maphsa (
 -- Table: her_source
 CREATE TABLE her_source (
     id serial  NOT NULL,
-    name varchar(128)  NOT NULL,
+    location varchar(128)  NOT NULL,
+    data_origin_name varchar(128)  NOT NULL,
     CONSTRAINT her_source_pk PRIMARY KEY (id)
 );
 
@@ -654,6 +662,14 @@ ALTER TABLE her_maphsa ADD CONSTRAINT her_maphsa_her_source
     INITIALLY IMMEDIATE
 ;
 
+-- Reference: her_source_data_origin (table: her_source)
+ALTER TABLE her_source ADD CONSTRAINT her_source_data_origin
+    FOREIGN KEY (data_origin_name)
+    REFERENCES data_origin (name)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
 -- Reference: hydro_info (table: hydro_info)
 ALTER TABLE hydro_info ADD CONSTRAINT hydro_info
     FOREIGN KEY (env_assessment_id)
@@ -847,3 +863,4 @@ ALTER TABLE env_assessment ADD CONSTRAINT topogr_concept_list
 ;
 
 -- End of file.
+
