@@ -98,29 +98,11 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
     parse_her_admin_div(sicg_site_series, source_meta, her_maphsa_id)
 
     parse_arch_ass(sicg_site_series, source_meta, her_maphsa_id)
+    # Parsing two branches simultaneously
+    parse_built_comp_her_feature(sicg_site_series, source_meta, her_maphsa_id)
 
-    if not pd.isna(sicg_site_series['estruturas']):
-        # If estruturas field can't be mapped to either a Feature or Built Component, report it as a missing mapping
-        # TODO refactor in a clean method that joins the logic for both mappings
-
-        try:
-            built_comp_id = parse_built_comp(sicg_site_series, source_meta, her_maphsa_id)
-        except MAPHSAMissingMappingException:
-            built_comp_id = None
-
-        try:
-            her_feature_id = parse_her_feature(sicg_site_series, source_meta, her_maphsa_id)
-        except MAPHSAMissingMappingException:
-            her_feature_id = None
-
-        if not built_comp_id and not her_feature_id and not pd.isna(sicg_site_series['estruturas']):
-            MapperManager.add_missing_value(sicg_site_series['estruturas'],
-                                            f"{source_meta['name']}:{sicg_site_series['X']}:estruturas",
-                                            'built_comp.comp_type/her_feature.feat_type')
-
-        her_find_id = parse_her_find(sicg_site_series, source_meta, her_maphsa_id)
-
-    env_assessment_id = parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
+    parse_her_find(sicg_site_series, source_meta, her_maphsa_id)
+    parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
 
 
 def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
@@ -528,6 +510,30 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
                                             'her_loc_meas.her_meas_value')
             continue
 
+
+def parse_built_comp_her_feature(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> (int, int):
+    # If estruturas field can't be mapped to either a Feature or Built Component, report it as a missing mapping
+
+    built_comp_id = her_feature_id = None
+    # Skip if no source value
+    if not pd.isna(sicg_site_series['estruturas']):
+
+        try:
+            built_comp_id = parse_built_comp(sicg_site_series, source_meta, her_maphsa_id)
+        except MAPHSAMissingMappingException:
+            built_comp_id = None
+
+        try:
+            her_feature_id = parse_her_feature(sicg_site_series, source_meta, her_maphsa_id)
+        except MAPHSAMissingMappingException:
+            her_feature_id = None
+
+        if not built_comp_id and not her_feature_id and not pd.isna(sicg_site_series['estruturas']):
+            MapperManager.add_missing_value(sicg_site_series['estruturas'],
+                                            f"{source_meta['name']}:{sicg_site_series['X']}:estruturas",
+                                            'built_comp.comp_type/her_feature.feat_type')
+
+    return built_comp_id, her_maphsa_id
 
 def parse_built_comp(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
     estruturas_value = sicg_site_series['estruturas']
