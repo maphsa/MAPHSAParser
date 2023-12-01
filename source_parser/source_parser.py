@@ -14,6 +14,10 @@ def validate_arguments(args: argparse.Namespace):
     except AssertionError:
         raise IOError(f"{args.subcommand[1]} is not a valid source parser subcommand")
 
+    if args.fake:
+        print("FAKING, SKIPPING INSERTION OF DATA")
+        input("Press any key to continue and accept...")
+
 
 def post_process():
     for ppc in post_process_commands:
@@ -27,5 +31,5 @@ def process_subcommand(args: argparse.Namespace):
 
     validate_arguments(args)
     parser = source_meta[args.subcommand[1]]['parser']
-    parser.process_input(args.input, source_meta[args.subcommand[1]])
+    parser.process_input(args.input, source_meta[args.subcommand[1]], not args.fake)
     post_process()

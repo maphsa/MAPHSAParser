@@ -61,14 +61,17 @@ def clean_input_dataframe(input_dataframe: pd.DataFrame) -> pd.DataFrame:
     return input_dataframe
 
 
-def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict):
+def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, insert_data: bool):
     pd.options.mode.chained_assignment = None
 
     for site_index in tqdm(input_dataframe.index):
         try:
             DatabaseInterface.start_transaction()
             parse_sicg_her_maphsa(input_dataframe.loc[site_index], source_meta)
-            DatabaseInterface.commit_transaction()
+            if insert_data:
+                DatabaseInterface.commit_transaction()
+            else:
+                DatabaseInterface.abort_transaction()
 
         except MAPHSAParserException as mpe:
             DatabaseInterface.abort_transaction()
@@ -535,6 +538,7 @@ def parse_built_comp_her_feature(sicg_site_series: Series, source_meta: dict, he
 
     return built_comp_id, her_maphsa_id
 
+
 def parse_built_comp(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
     estruturas_value = sicg_site_series['estruturas']
 
@@ -724,7 +728,7 @@ def add_data_origin(source_meta: dict):
     DatabaseInterface.add_origin(source_meta)
 
 
-def process_input(input_files, source_meta: dict):
+def process_input(input_files, source_meta: dict, insert_data: bool):
     data_frame_batch = {in_file.stem: create_input_dataframes(in_file) for in_file in input_files}
 
     if not verify_data_origin(source_meta):
@@ -732,6 +736,6 @@ def process_input(input_files, source_meta: dict):
 
     for (input_resource, input_data) in data_frame_batch.items():
         input_data = clean_input_dataframe(input_data)
-        parse_input_dataframe(input_data, source_meta)
+        parse_input_dataframe(input_data, source_meta, insert_data)
 
     MapperManager.print_missing_values()
