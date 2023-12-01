@@ -81,7 +81,6 @@ def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, inse
 def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
 
     sicg_id = sicg_site_series['SICG_ID']
-    popular_name = sicg_site_series['Nome.popular']
     uuid = id_cipher.generate_entity_uuid5(sicg_site_series,
                                            source_parser.source_meta[source_parser.ExistingSources.sicg.value])
 
@@ -92,7 +91,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
 
     her_maphsa_id = DatabaseInterface.insert_entity('her_maphsa', {
         'uuid': uuid,
-        'description': popular_name,
+        'description': f"Legacy SICG data.",
         'source_id': source_id
     })
 
@@ -252,6 +251,14 @@ def parse_her_loc_name(sicg_site_series: Series, source_meta: dict, her_loc_sum_
     return
 
 
+# SilentGhost's solution from
+# https://stackoverflow.com/questions/1265665/how-can-i-check-if-a-string-represents-an-int-without-using-try-except
+def check_int(s):
+    if s[0] in ('-', '+'):
+        return s[1:].isdigit()
+    return s.isdigit()
+
+
 def parse_name_field(name_field, pronapa_id, name_candidates):
     name_field = name_field.strip()
 
@@ -265,8 +272,11 @@ def parse_name_field(name_field, pronapa_id, name_candidates):
     if match and pronapa_id is None:
         pronapa_id = match.group()
 
-    if name_field not in NAME_NEGATIVES:
+    if name_field not in NAME_NEGATIVES and not check_int(name_field):
         name_candidates.append(name_field)
+
+    if check_int(name_field):
+        print(name_field)
 
     return pronapa_id, name_candidates
 
