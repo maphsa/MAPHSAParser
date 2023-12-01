@@ -5,6 +5,12 @@ class MAPHSAParserException(Exception):
         super().__init__(self.message)
 
 
+class MAPHSAMissingSourceException(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
 class MAPHSAMissingMappingException(MAPHSAParserException):
 
     def __init__(self, message, missing_value):
