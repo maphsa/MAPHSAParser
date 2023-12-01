@@ -15,10 +15,12 @@ class ExistingSources(Enum):
 source_meta = {
     ExistingSources.sicg.value: {
         'name': ExistingSources.sicg.value,
+        'version': 1.0,
+        'date': '21.7.2023',
         'id_field': 'SICG_ID',
         'namespace': uuid.UUID('d08c3d93-3d3e-431d-affe-0d7bb1a839ba'),
         'parser': sicg_parser,
-        'source_description': 'Parsed SICG data'
+        'source_description': 'Parsed SICG legacy data'
     }
 }
 
