@@ -1,15 +1,14 @@
-from functools import reduce
+from io import StringIO
+import re
+import pathlib
 
 import numpy as np
 import pandas
 import pandas as pd
-from io import StringIO
-import pathlib
-
-import psycopg2.errors
 from pandas import Series
 from tqdm import tqdm
-import re
+from geojson import Point
+
 
 from database_interface import DatabaseInterface
 import source_parser
@@ -274,9 +273,6 @@ def parse_name_field(name_field, pronapa_id, name_candidates):
 
     if name_field not in NAME_NEGATIVES and not check_int(name_field):
         name_candidates.append(name_field)
-
-    if check_int(name_field):
-        print(name_field)
 
     return pronapa_id, name_candidates
 
