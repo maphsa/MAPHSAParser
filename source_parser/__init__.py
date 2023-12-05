@@ -20,7 +20,8 @@ source_meta = {
         'id_field': 'SICG_ID',
         'namespace': uuid.UUID('d08c3d93-3d3e-431d-affe-0d7bb1a839ba'),
         'parser': sicg_parser,
-        'source_description': 'Parsed SICG legacy data'
+        'source_description': 'Parsed SICG legacy data',
+        'polygon_suffix': '_polygons.geojson'
     }
 }
 

@@ -1,0 +1,1 @@
+UPDATE public.her_geom SET her_polygon=ST_GeomFromText('{{polygon_string}}', 4326) WHERE id_loc_ = {{her_geom_id}};
