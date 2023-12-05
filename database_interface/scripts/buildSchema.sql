@@ -164,7 +164,8 @@ CREATE TABLE her_geom (
     CONSTRAINT her_geom_pk PRIMARY KEY (id_loc_)
 );
 
-SELECT AddGeometryColumn('public','her_geom','wkb_geometry',4326,'POINT',2);;
+SELECT AddGeometryColumn('public','her_geom','wkb_geometry',4326,'POINT',2);
+SELECT AddGeometryColumn('public','her_geom','her_polygon',4326,'MULTIPOLYGON',2);
 
 -- Table: her_loc_funct
 CREATE TABLE her_loc_funct (

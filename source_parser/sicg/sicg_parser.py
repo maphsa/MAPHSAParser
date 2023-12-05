@@ -1,14 +1,18 @@
+import json
 from io import StringIO
 import re
 import pathlib
+import os.path
 
+import geojson
 import numpy as np
 import pandas
 import pandas as pd
+import psycopg2.errors
 from pandas import Series
 from tqdm import tqdm
 from geojson import Point
-
+from shapely.geometry import shape
 
 from database_interface import DatabaseInterface
 import source_parser
@@ -46,13 +50,14 @@ def clean_input_dataframe(input_dataframe: pd.DataFrame) -> pd.DataFrame:
     input_dataframe = input_dataframe.replace('NA', np.NAN)
     input_dataframe = input_dataframe.dropna(axis=1, how='all')
 
+    ''' #TODO remove debug limiter
     artifact_columns = []
     for col in input_dataframe.columns:
         if input_dataframe[col].count() < sicg_settings.MIN_COLUMN_VALUE:
             artifact_columns.append(col)
 
     input_dataframe = input_dataframe.drop(artifact_columns, axis=1)
-
+    '''
     # TODO Some oddity happening here with input csv and panda datatypes, keep an eye
     input_dataframe['Latitude'] = set_column_to_float(input_dataframe, 'Latitude')
     input_dataframe['Longitude'] = set_column_to_float(input_dataframe, 'Longitude')
@@ -106,6 +111,21 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
     parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
 
 
+def process_geom(_lat, _long, _polygon):
+    lat = long = None
+    if not pd.isna(_lat) and not pd.isna(_long):
+        lat = _lat
+        long = _long
+
+    polygon_points = []
+    if not pd.isna(_polygon):
+        for point_string in _polygon.split(","):
+            point_coords = re.findall("([0-9]+) ([0-9]+)", point_string)[0]
+            polygon_points.append((float(point_coords[0])*-0.0001, float(point_coords[1])*-0.000001))
+
+    return lat, long, polygon_points
+
+
 def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
     geom_ext_cert_definite_concept_id = concept_id_mappings['Geometry Extent Certainty']['Negligible']
@@ -121,10 +141,13 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     else:
         loc_cert_concept_id = loc_cert_definite_concept_id
 
-    lat = long = None
-    if not pd.isna(sicg_site_series['Latitude']) and not pd.isna(sicg_site_series['Longitude']):
-        lat = sicg_site_series['Latitude']
-        long = sicg_site_series['Longitude']
+    try:
+        (lat, long, polygon) = process_geom(sicg_site_series['Latitude'], sicg_site_series['Longitude'], sicg_site_series['perimetro'])
+
+    except IndexError as ie:
+        print(f"Unable to parse perimeter for {sicg_site_series['X']}")
+        lat = long = None
+        polygon = []
 
     her_geom_id = DatabaseInterface.insert_entity('her_geom', {
         'loc_cert': loc_cert_concept_id,
@@ -137,6 +160,17 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         'wkb_geometry': "NULL"
     })
 
+
+    # TODO Parse the polygons?
+    '''
+    if len(polygon) > 3:
+        polygon_string = ",POLYGON(("
+        for p in polygon:
+            polygon_string = polygon_string + f"{p[0]} {p[1]}, "
+
+        polygon_string = polygon_string + f"{polygon[0][0]} {polygon[0][1]}))"
+    '''
+
     if lat and long:
         DatabaseInterface.run_script('update_her_geom', target_data={
             'lat': lat,
@@ -144,7 +178,12 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
             'her_geom_id': her_geom_id
         })
 
-    # TODO Add polygon from sicg_site_series['perimetro']
+    if not pd.isna(sicg_site_series['supp_geom']):
+        polygon_geom = geojson.loads(sicg_site_series['supp_geom'])
+        DatabaseInterface.run_script('update_her_polygon', target_data={
+            'her_geom_id': her_geom_id,
+            'polygon_string': shape(polygon_geom).wkt
+        })
 
 
 def parse_her_loc_sum(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
@@ -734,8 +773,33 @@ def add_data_origin(source_meta: dict):
     DatabaseInterface.add_origin(source_meta)
 
 
+def adjust_sicg_code(source_code):
+    m = re.search(r'([A-Z]+)([0-9]+)([A-Z]{2})([A-Z]{2})([0-9]+)', source_code)
+    return f"{m[1]}-{m[2]}-{m[3]}-{m[4]}-{m[5]}"
+
+
+def load_supplementary_geodata(input_file: pathlib.Path, source_meta: dict, input_data_frame: pd.DataFrame):
+    geodata_file_url = f"{os.path.dirname(input_file)}/{input_file.stem}{source_meta['polygon_suffix']}"
+    if os.path.isfile(geodata_file_url):
+        with open(geodata_file_url) as supplementary_geodata:
+            supplementary_geodata = geojson.load(supplementary_geodata)
+    else:
+        raise IOError(f"Missing supplementary geodata {geodata_file_url}")
+
+    input_data_frame['supp_geom'] = ""
+    print("Loading supplementary geometry...")
+    for site in tqdm(supplementary_geodata['features']):
+        adjusted_code = adjust_sicg_code(site['properties']['co_iphan'])
+        matches = input_data_frame['SICG_ID'].str.match(adjusted_code)
+        if matches.sum() == 1:
+            input_data_frame.loc[matches, 'supp_geom'] = geojson.dumps(site['geometry'])
+
+    return input_data_frame
+
+
 def process_input(input_files, source_meta: dict, insert_data: bool):
     data_frame_batch = {in_file.stem: create_input_dataframes(in_file) for in_file in input_files}
+    data_frame_batch = {in_file.stem: load_supplementary_geodata(in_file, source_meta, data_frame_batch[in_file.stem]) for in_file in input_files}
 
     if not verify_data_origin(source_meta):
         add_data_origin(source_meta)
