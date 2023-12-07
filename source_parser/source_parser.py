@@ -31,5 +31,5 @@ def process_subcommand(args: argparse.Namespace):
 
     validate_arguments(args)
     parser = source_meta[args.subcommand[1]]['parser']
-    parser.process_input(args.input, source_meta[args.subcommand[1]], not args.fake)
+    parser.process_input(args.input, source_meta[args.subcommand[1]], args.supp, not args.fake)
     post_process()
