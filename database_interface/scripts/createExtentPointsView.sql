@@ -1,4 +1,4 @@
-DROP VIEW IF EXISTS extent_sites;
+DROP VIEW IF EXISTS extent_sites CASCADE;
 CREATE VIEW extent_sites AS
 	SELECT
 	her_geom.her_maphsa_id, her_geom.wkb_geometry
