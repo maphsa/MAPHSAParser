@@ -235,7 +235,7 @@ class DatabaseInterface:
         try:
             curs.execute(insert_query)
             entity_id = curs.fetchone()[0]
-        except psycopg2.errors.DataError as e:
+        except psycopg2.errors.Error as e:
             raise (MAPHSAParseInsertionException(f"Error{e.pgcode}: {e.pgerror}", query=insert_query,
                                                  parse_data=target_data))
         curs.close()
