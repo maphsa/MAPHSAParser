@@ -98,7 +98,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
         'description': f"Legacy SICG data.",
         'source_id': source_id
     })
-
+    '''
     parse_her_geom(sicg_site_series, source_meta, her_maphsa_id)
     parse_her_loc_sum(sicg_site_series, source_meta, her_maphsa_id)
     parse_her_admin_div(sicg_site_series, source_meta, her_maphsa_id)
@@ -109,6 +109,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
 
     parse_her_find(sicg_site_series, source_meta, her_maphsa_id)
     parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
+    '''
     parse_her_cond_ass(sicg_site_series, source_meta, her_maphsa_id)
 
 
@@ -786,15 +787,47 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
         'cond_assessor': f"{source_meta['name']}:{sicg_site_series['X']}",
     })
 
-    # Disturbance Cause (fatoresDegradacao)
+    # Disturbance Event
 
     dist_cause_mapper = mappings.MapperManager.get_mapper('disturbance_event', 'dist_cause')
     dist_cause_source_ids = concept_id_mappings['Disturbance Cause']
 
-    missing_dist_cause_type_id = dist_cause_source_ids['Not Defined']
-    other_dist_cause_type_id = dist_cause_source_ids['Other']
+    try:
+        dist_cause_value = dist_cause_mapper.get_field_mapping(sicg_site_series['fatoresDegradacao'])
 
-    # CONTINUE HERE! TODO!
+    except MAPHSAMissingMappingException:
+        dist_cause_value = 'Other'
+        MapperManager.add_missing_value(
+            f"{sicg_site_series['fatoresDegradacao']}",
+            f"{source_meta['name']}:{sicg_site_series['X']}:fatoresDegradacao",
+            'disturbance_event.dist_cause')
+
+    except AttributeError as ae:
+        if pd.isna(ae.obj):
+            dist_cause_value = 'Not Defined'
+        else:
+            raise ae
+
+    dist_cause_id = dist_cause_source_ids[dist_cause_value]
+
+    dist_effect_source_ids = concept_id_mappings['Disturbance Effect']
+    missing_dist_effect_type_id = dist_effect_source_ids['Not Defined']
+
+    dist_effect_list_id = DatabaseInterface.create_concept_list('Disturbance Effect', [missing_dist_effect_type_id])
+
+    # Overall Damage Extent Estado.de.Conservação, Estado.de.Preservação, Entorno.do.bem
+    overall_damage_extent_source_ids = concept_id_mappings['Overall Damage Extent']
+
+    disturbance_event_id = DatabaseInterface.insert_entity('disturbance_event', {
+        'her_cond_ass_id': her_cond_ass_id,
+        'dist_cause': dist_cause_id,
+        'dist_effect': dist_effect_list_id,
+        'dist_from': 'now()',
+        'over_dam_ext': 1,
+    })
+
+
+
 
 
 def verify_data_origin(source_meta: dict):
