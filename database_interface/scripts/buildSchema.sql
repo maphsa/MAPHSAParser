@@ -1,5 +1,5 @@
 -- Created by Vertabelo (http://vertabelo.com)
--- Last modification date: 2023-11-28 10:37:35.228
+-- Last modification date: 2023-12-07 13:30:37.65
 
 -- tables
 -- Table: arch_ass
@@ -165,7 +165,7 @@ CREATE TABLE her_geom (
 );
 
 SELECT AddGeometryColumn('public','her_geom','wkb_geometry',4326,'POINT',2);
-SELECT AddGeometryColumn('public','her_geom','her_polygon',4326,'MULTIPOLYGON',2);
+SELECT AddGeometryColumn('public','her_geom','her_polygon',4326,'MULTIPOLYGON',2);;
 
 -- Table: her_loc_funct
 CREATE TABLE her_loc_funct (
