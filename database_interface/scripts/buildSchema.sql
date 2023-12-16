@@ -1,5 +1,5 @@
 -- Created by Vertabelo (http://vertabelo.com)
--- Last modification date: 2023-12-07 13:30:37.65
+-- Last modification date: 2023-12-16 10:31:54.758
 
 -- tables
 -- Table: arch_ass
@@ -80,7 +80,7 @@ CREATE TABLE disturbance_event (
     id serial  NOT NULL,
     dist_cause int  NOT NULL,
     dist_effect int  NOT NULL,
-    dist_from varchar(100)  NOT NULL,
+    dist_from interval  NULL,
     over_dam_ext int  NOT NULL,
     her_cond_ass_id int  NOT NULL,
     CONSTRAINT disturbance_event_pk PRIMARY KEY (id)
