@@ -1,0 +1,7 @@
+{
+    "bom": "1-10%",
+    "regular": "11-30%",
+    "ruim": "61-90%",
+    "pessimo": "91-100%",
+    "unknown": "Unknown"
+}

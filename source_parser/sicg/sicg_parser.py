@@ -98,7 +98,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
         'description': f"Legacy SICG data.",
         'source_id': source_id
     })
-    '''
+
     parse_her_geom(sicg_site_series, source_meta, her_maphsa_id)
     parse_her_loc_sum(sicg_site_series, source_meta, her_maphsa_id)
     parse_her_admin_div(sicg_site_series, source_meta, her_maphsa_id)
@@ -109,7 +109,6 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
 
     parse_her_find(sicg_site_series, source_meta, her_maphsa_id)
     parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
-    '''
     parse_her_cond_ass(sicg_site_series, source_meta, her_maphsa_id)
 
 
@@ -816,18 +815,31 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
     dist_effect_list_id = DatabaseInterface.create_concept_list('Disturbance Effect', [missing_dist_effect_type_id])
 
     # Overall Damage Extent Estado.de.Conservação, Estado.de.Preservação, Entorno.do.bem
-    overall_damage_extent_source_ids = concept_id_mappings['Overall Damage Extent']
+
+    over_dam_ext_mapper = mappings.MapperManager.get_mapper('disturbance_event', 'over_dam_ext')
+    over_dam_ext_ids = concept_id_mappings['Overall Damage Extent']
+
+    estado_de_conservacao = sicg_site_series['Estado.de.Conservação'] if not pd.isna(sicg_site_series['Estado.de.Conservação']) else None
+    estado_de_preservacao = sicg_site_series['Estado.de.Preservação'] if not pd.isna(sicg_site_series['Estado.de.Preservação']) else None
+    entorno_do_bem = sicg_site_series['Entorno.do.bem'] if not pd.isna(sicg_site_series['Entorno.do.bem']) else None
+
+    if estado_de_conservacao is not None:
+        over_dam_ext_value = over_dam_ext_mapper.get_field_mapping(estado_de_conservacao)
+    else:
+        over_dam_ext_value = 'Unknown'
+
+    try:
+        over_dam_ext_id = over_dam_ext_ids[over_dam_ext_value]
+    except KeyError as ke:
+        print(ke)
 
     disturbance_event_id = DatabaseInterface.insert_entity('disturbance_event', {
         'her_cond_ass_id': her_cond_ass_id,
         'dist_cause': dist_cause_id,
         'dist_effect': dist_effect_list_id,
-        'dist_from': 'now()',
-        'over_dam_ext': 1,
+        'dist_from': 'NULL',
+        'over_dam_ext': over_dam_ext_id,
     })
-
-
-
 
 
 def verify_data_origin(source_meta: dict):
