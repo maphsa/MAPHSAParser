@@ -109,6 +109,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
 
     parse_her_find(sicg_site_series, source_meta, her_maphsa_id)
     parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
+    parse_her_cond_ass(sicg_site_series, source_meta, her_maphsa_id)
 
 
 def process_geom(_lat, _long, _polygon):
@@ -178,7 +179,7 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
             'her_geom_id': her_geom_id
         })
 
-    if not pd.isna(sicg_site_series['supp_geom']):
+    if 'supp_geom' in sicg_site_series and not pd.isna(sicg_site_series['supp_geom']):
         polygon_geom = geojson.loads(sicg_site_series['supp_geom'])
         DatabaseInterface.run_script('update_her_polygon', target_data={
             'her_geom_id': her_geom_id,
@@ -756,12 +757,88 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
     # Condition Assessment
 
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
-    recc_type = concept_id_mappings['Recommendation Type']['Not Defined']
+
+    recc_type_mapper = mappings.MapperManager.get_mapper('her_cond_ass', 'recc_type')
+    recc_type_source_ids = concept_id_mappings['Recommendation Type']
+
+    missing_recc_type_id = recc_type_source_ids['Not Defined']
+    other_recc_type_id = recc_type_source_ids['Other']
+
+    if not pd.isna(sicg_site_series['medidasPreservação']):
+        try:
+            recc_type_value = recc_type_mapper.get_field_mapping(sicg_site_series['medidasPreservação'])
+            recc_type_ids = [recc_type_source_ids[recc_type_value]]
+        except MAPHSAMissingMappingException:
+            recc_type_ids = [other_recc_type_id]
+            MapperManager.add_missing_value(
+                f"{sicg_site_series['medidasPreservação']}",
+                f"{source_meta['name']}:{sicg_site_series['X']}:medidasPreservação",
+                'her_cond_ass.recc_type')
+
+    else:
+        recc_type_ids = [missing_recc_type_id]
+
+    recc_type_list_id = DatabaseInterface.create_concept_list('Recommendation Type', recc_type_ids)
 
     her_cond_ass_id = DatabaseInterface.insert_entity('her_cond_ass', {
         'her_maphsa_id': her_maphsa_id,
-        'recc_type': recc_type,
+        'recc_type': recc_type_list_id,
         'cond_assessor': f"{source_meta['name']}:{sicg_site_series['X']}",
+    })
+
+    # Disturbance Event
+
+    dist_cause_mapper = mappings.MapperManager.get_mapper('disturbance_event', 'dist_cause')
+    dist_cause_source_ids = concept_id_mappings['Disturbance Cause']
+
+    try:
+        dist_cause_value = dist_cause_mapper.get_field_mapping(sicg_site_series['fatoresDegradacao'])
+
+    except MAPHSAMissingMappingException:
+        dist_cause_value = 'Other'
+        MapperManager.add_missing_value(
+            f"{sicg_site_series['fatoresDegradacao']}",
+            f"{source_meta['name']}:{sicg_site_series['X']}:fatoresDegradacao",
+            'disturbance_event.dist_cause')
+
+    except AttributeError as ae:
+        if pd.isna(ae.obj):
+            dist_cause_value = 'Not Defined'
+        else:
+            raise ae
+
+    dist_cause_id = dist_cause_source_ids[dist_cause_value]
+
+    dist_effect_source_ids = concept_id_mappings['Disturbance Effect']
+    missing_dist_effect_type_id = dist_effect_source_ids['Not Defined']
+
+    dist_effect_list_id = DatabaseInterface.create_concept_list('Disturbance Effect', [missing_dist_effect_type_id])
+
+    # Overall Damage Extent Estado.de.Conservação, Estado.de.Preservação, Entorno.do.bem
+
+    over_dam_ext_mapper = mappings.MapperManager.get_mapper('disturbance_event', 'over_dam_ext')
+    over_dam_ext_ids = concept_id_mappings['Overall Damage Extent']
+
+    estado_de_conservacao = sicg_site_series['Estado.de.Conservação'] if not pd.isna(sicg_site_series['Estado.de.Conservação']) else None
+    estado_de_preservacao = sicg_site_series['Estado.de.Preservação'] if not pd.isna(sicg_site_series['Estado.de.Preservação']) else None
+    entorno_do_bem = sicg_site_series['Entorno.do.bem'] if not pd.isna(sicg_site_series['Entorno.do.bem']) else None
+
+    if estado_de_conservacao is not None:
+        over_dam_ext_value = over_dam_ext_mapper.get_field_mapping(estado_de_conservacao)
+    else:
+        over_dam_ext_value = 'Unknown'
+
+    try:
+        over_dam_ext_id = over_dam_ext_ids[over_dam_ext_value]
+    except KeyError as ke:
+        print(ke)
+
+    disturbance_event_id = DatabaseInterface.insert_entity('disturbance_event', {
+        'her_cond_ass_id': her_cond_ass_id,
+        'dist_cause': dist_cause_id,
+        'dist_effect': dist_effect_list_id,
+        'dist_from': 'NULL',
+        'over_dam_ext': over_dam_ext_id,
     })
 
 
@@ -797,9 +874,11 @@ def load_supplementary_geodata(input_file: pathlib.Path, source_meta: dict, inpu
     return input_data_frame
 
 
-def process_input(input_files, source_meta: dict, insert_data: bool):
+def process_input(input_files, source_meta: dict, load_supp_geodata: bool, insert_data: bool):
     data_frame_batch = {in_file.stem: create_input_dataframes(in_file) for in_file in input_files}
-    data_frame_batch = {in_file.stem: load_supplementary_geodata(in_file, source_meta, data_frame_batch[in_file.stem]) for in_file in input_files}
+
+    if load_supp_geodata:
+        data_frame_batch = {in_file.stem: load_supplementary_geodata(in_file, source_meta, data_frame_batch[in_file.stem]) for in_file in input_files}
 
     if not verify_data_origin(source_meta):
         add_data_origin(source_meta)

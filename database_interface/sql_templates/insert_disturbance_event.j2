@@ -1,0 +1,4 @@
+INSERT INTO public.disturbance_event
+(id, dist_cause, dist_effect, dist_from, over_dam_ext, her_cond_ass_id)
+VALUES(DEFAULT, {{dist_cause}}, '{{dist_effect}}', {{dist_from}}, {{over_dam_ext}}, {{her_cond_ass_id}})
+RETURNING id;
