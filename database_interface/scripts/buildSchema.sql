@@ -1,5 +1,5 @@
 -- Created by Vertabelo (http://vertabelo.com)
--- Last modification date: 2023-11-28 10:37:35.228
+-- Last modification date: 2023-12-16 10:31:54.758
 
 -- tables
 -- Table: arch_ass
@@ -80,7 +80,7 @@ CREATE TABLE disturbance_event (
     id serial  NOT NULL,
     dist_cause int  NOT NULL,
     dist_effect int  NOT NULL,
-    dist_from varchar(100)  NOT NULL,
+    dist_from interval  NULL,
     over_dam_ext int  NOT NULL,
     her_cond_ass_id int  NOT NULL,
     CONSTRAINT disturbance_event_pk PRIMARY KEY (id)
@@ -165,7 +165,7 @@ CREATE TABLE her_geom (
 );
 
 SELECT AddGeometryColumn('public','her_geom','wkb_geometry',4326,'POINT',2);
-SELECT AddGeometryColumn('public','her_geom','her_polygon',4326,'MULTIPOLYGON',2);
+SELECT AddGeometryColumn('public','her_geom','her_polygon',4326,'MULTIPOLYGON',2);;
 
 -- Table: her_loc_funct
 CREATE TABLE her_loc_funct (

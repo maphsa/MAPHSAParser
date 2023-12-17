@@ -1,0 +1,4 @@
+INSERT INTO public.her_cond_ass
+(id, recc_type, cond_assessor, her_maphsa_id)
+VALUES(DEFAULT, {{recc_type}}, '{{cond_assessor}}', {{her_maphsa_id}})
+RETURNING id;
