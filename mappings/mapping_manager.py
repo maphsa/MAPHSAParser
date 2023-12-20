@@ -2,7 +2,8 @@
 import json
 
 from mappings.mappers.mappers import Mapper, PreviousResearchActivitiesMapper, CulturalAffiliationMapper, \
-    ComponentTypeMapper, FeatureTypeMapper, ArtefactCategoryMapper, EnvironmentAssessmentParamMapper
+    ComponentTypeMapper, FeatureTypeMapper, ArtefactCategoryMapper, EnvironmentAssessmentParamMapper, \
+    HydrologyTypeMapper
 from exceptions import MAPHSAParserException
 
 import pandas as pd
@@ -11,7 +12,7 @@ import pandas as pd
 class MapperManager:
 
     active_mappers = {}
-    missing_values: pd.DataFrame = pd.DataFrame(columns=["value", "source", "target", "count"])
+    missing_values: pd.DataFrame = pd.DataFrame(columns=["value", "filtered_value", "source", "target", "count"])
 
     specialized_mappers = {
         'arch_ass.prev_res_act': PreviousResearchActivitiesMapper,
@@ -23,7 +24,7 @@ class MapperManager:
         'env_assessment.lcov_type': EnvironmentAssessmentParamMapper,
         'env_assessment.soil_class': EnvironmentAssessmentParamMapper,
         'env_assessment.l_use_type': EnvironmentAssessmentParamMapper,
-        'hydro_info.hydro_type': EnvironmentAssessmentParamMapper,
+        'hydro_info.hydro_type': HydrologyTypeMapper,
     }
 
     @classmethod
@@ -48,10 +49,10 @@ class MapperManager:
         return mapper
 
     @classmethod
-    def add_missing_value(cls, value: str, source: str, target: str) -> object:
+    def add_missing_value(cls, value: str, filtered_value: str, source: str, target: str) -> object:
         if cls.missing_values[(cls.missing_values['value'].values == value) &
                               (cls.missing_values['target'].values == target)].count().value == 0:
-            cls.missing_values.loc[-1] = [value, source, target, 1]
+            cls.missing_values.loc[-1] = [value, filtered_value, source, target, 1]
             cls.missing_values.index = cls.missing_values.index + 1
         else:
             cls.missing_values.loc[(cls.missing_values['value'].values == value) &
