@@ -13,8 +13,9 @@ class MAPHSAMissingSourceException(Exception):
 
 class MAPHSAMissingMappingException(MAPHSAParserException):
 
-    def __init__(self, message, missing_value):
+    def __init__(self, message, original_missing_value, missing_value):
         self.message = message
+        self.original_missing_value = original_missing_value
         self.missing_value = missing_value
         super().__init__(self.message)
 
