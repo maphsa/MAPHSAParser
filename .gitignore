@@ -2,4 +2,4 @@
 ENV/
 database_interface/extent/
 __pycache__/
-missing_values.csv
+missing_values*
