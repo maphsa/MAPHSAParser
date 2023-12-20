@@ -108,6 +108,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
     parse_built_comp_her_feature(sicg_site_series, source_meta, her_maphsa_id)
 
     parse_her_find(sicg_site_series, source_meta, her_maphsa_id)
+
     parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
     parse_her_cond_ass(sicg_site_series, source_meta, her_maphsa_id)
 
@@ -414,8 +415,8 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     if is_valid_ca_value(sicg_site_series['tradicoesArtefatosCeramicos']):
         try:
             ca_names = ca_names.union(ca_mapper.get_field_mappings(sicg_site_series['tradicoesArtefatosCeramicos']))
-        except MAPHSAMissingMappingException:
-            MapperManager.add_missing_value(sicg_site_series['tradicoesArtefatosCeramicos'],
+        except MAPHSAMissingMappingException as mme:
+            MapperManager.add_missing_value(sicg_site_series['tradicoesArtefatosCeramicos'], mme.missing_value,
                                             f"{source_meta['name']}:{sicg_site_series['X']}:tradicoesArtefatosCeramicos",
                                             'site_cult_aff.cult_aff')
             ca_names.add('Other')
@@ -423,8 +424,8 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     if is_valid_ca_value(sicg_site_series['fasesArtefatosCeramicos']):
         try:
             ca_names = ca_names.union(ca_mapper.get_field_mappings(sicg_site_series['fasesArtefatosCeramicos']))
-        except MAPHSAMissingMappingException:
-            MapperManager.add_missing_value(sicg_site_series['fasesArtefatosCeramicos'],
+        except MAPHSAMissingMappingException as mme:
+            MapperManager.add_missing_value(sicg_site_series['fasesArtefatosCeramicos'], mme.missing_value,
                                             f"{source_meta['name']}:{sicg_site_series['X']}:fasesArtefatosCeramicos",
                                             'site_cult_aff.cult_aff')
             ca_names.add('Other')
@@ -432,8 +433,8 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     if is_valid_ca_value(sicg_site_series['tradicoesArtefatosLiticos']):
         try:
             ca_names = ca_names.union(ca_mapper.get_field_mappings(sicg_site_series['tradicoesArtefatosLiticos']))
-        except MAPHSAMissingMappingException:
-            MapperManager.add_missing_value(sicg_site_series['tradicoesArtefatosLiticos'],
+        except MAPHSAMissingMappingException as mme:
+            MapperManager.add_missing_value(sicg_site_series['tradicoesArtefatosLiticos'], mme.missing_value,
                                             f"{source_meta['name']}:{sicg_site_series['X']}:tradicoesArtefatosLiticos",
                                             'site_cult_aff.cult_aff')
             ca_names.add('Other')
@@ -554,7 +555,8 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
                 measurement_type)
 
         except ValueError as ve:
-            MapperManager.add_missing_value(f"{sicg_site_series[source_measurement_field[0]]}:{source_measurement_field[1]}:{source_measurement_field[2]}",
+            missing_value = f"{sicg_site_series[source_measurement_field[0]]}:{source_measurement_field[1]}:{source_measurement_field[2]}"
+            MapperManager.add_missing_value(missing_value, missing_value,
                                             f"{source_meta['name']}:{sicg_site_series['X']}:{source_measurement_field}",
                                             'her_loc_meas.her_meas_value')
             continue
@@ -569,16 +571,18 @@ def parse_built_comp_her_feature(sicg_site_series: Series, source_meta: dict, he
 
         try:
             built_comp_id = parse_built_comp(sicg_site_series, source_meta, her_maphsa_id)
-        except MAPHSAMissingMappingException:
+        except MAPHSAMissingMappingException as mme:
+            source_value = mme.missing_value
             built_comp_id = None
 
         try:
             her_feature_id = parse_her_feature(sicg_site_series, source_meta, her_maphsa_id)
-        except MAPHSAMissingMappingException:
+        except MAPHSAMissingMappingException as mme:
+            source_value = mme.missing_value
             her_feature_id = None
 
         if not built_comp_id and not her_feature_id and not pd.isna(sicg_site_series['estruturas']):
-            MapperManager.add_missing_value(sicg_site_series['estruturas'],
+            MapperManager.add_missing_value(sicg_site_series['estruturas'], source_value,
                                             f"{source_meta['name']}:{sicg_site_series['X']}:estruturas",
                                             'built_comp.comp_type/her_feature.feat_type')
 
@@ -636,8 +640,8 @@ def parse_her_find(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
 
         try:
             art_cat_concept_name = art_cat_concept_names.get_field_mapping(artefatos_value)
-        except MAPHSAMissingMappingException:
-            MapperManager.add_missing_value(artefatos_value,
+        except MAPHSAMissingMappingException as mme:
+            MapperManager.add_missing_value(artefatos_value, mme.missing_value,
                                             f"{source_meta['name']}:{sicg_site_series['X']}:artefatos",
                                             'her_find.art_cat_concept_list_id')
             return None
@@ -667,13 +671,14 @@ def parse_env_assessment_param(source_series, source_field_name, target_collecti
     target_concept_ids = []
 
     if source_value is not None:
+
         try:
             target_concept_name = concept_names.get_field_mapping(source_value)
             target_concept_id = concept_ids[target_concept_name]
             target_concept_ids.append(target_concept_id)
 
-        except MAPHSAMissingMappingException:
-            MapperManager.add_missing_value(source_value,
+        except MAPHSAMissingMappingException as mme:
+            MapperManager.add_missing_value(source_value, mme.missing_value,
                                             f"{source_meta_name}:{source_series['X']}:{source_field_name}",
                                             f"{target_table}.{target_field}")
 
@@ -695,7 +700,7 @@ def parse_env_assessment(sicg_site_series: Series, source_meta: dict, her_maphsa
     # Topography
     topo_type = parse_env_assessment_param(sicg_site_series, 'tipoRelevo',
                                                'Topography', 'Unknown',
-                                               source_meta['name'], 'env_assessment', 'topo_type', True)
+                                                   source_meta['name'], 'env_assessment', 'topo_type', True)
     # Land Cover
     lcov_type = parse_env_assessment_param(sicg_site_series, 'vegetacaoAtual',
                                                'Land Cover', 'Unknown',
@@ -709,11 +714,10 @@ def parse_env_assessment(sicg_site_series: Series, source_meta: dict, her_maphsa
                                                 'atividadesDesenvolvidasLocal', 'Land Use',
                                                 'Unknown', source_meta['name'],
                                                 'env_assessment', 'l_use_type', True)
-
+    
     # TODO Empty value?
 
     bedr_geo = DatabaseInterface.create_concept_list('Bedrock Geology', [])
-
     env_assessment_id = DatabaseInterface.insert_entity('env_assessment', {
         'her_maphsa_id': her_maphsa_id,
         'topo_type': topo_type,
@@ -724,6 +728,7 @@ def parse_env_assessment(sicg_site_series: Series, source_meta: dict, her_maphsa
     })
 
     # Hydrology Information
+
     hyd_inf_sources = []
 
     if not pd.isna(sicg_site_series['bacia']) and sicg_site_series['bacia'] not in [his[0] for his in hyd_inf_sources]:
@@ -768,10 +773,10 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
         try:
             recc_type_value = recc_type_mapper.get_field_mapping(sicg_site_series['medidasPreservação'])
             recc_type_ids = [recc_type_source_ids[recc_type_value]]
-        except MAPHSAMissingMappingException:
+        except MAPHSAMissingMappingException as mme:
             recc_type_ids = [other_recc_type_id]
             MapperManager.add_missing_value(
-                f"{sicg_site_series['medidasPreservação']}",
+                f"{sicg_site_series['medidasPreservação']}", mme.missing_value,
                 f"{source_meta['name']}:{sicg_site_series['X']}:medidasPreservação",
                 'her_cond_ass.recc_type')
 
@@ -794,10 +799,10 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
     try:
         dist_cause_value = dist_cause_mapper.get_field_mapping(sicg_site_series['fatoresDegradacao'])
 
-    except MAPHSAMissingMappingException:
+    except MAPHSAMissingMappingException as mme:
         dist_cause_value = 'Other'
         MapperManager.add_missing_value(
-            f"{sicg_site_series['fatoresDegradacao']}",
+            f"{sicg_site_series['fatoresDegradacao']}", mme.missing_value,
             f"{source_meta['name']}:{sicg_site_series['X']}:fatoresDegradacao",
             'disturbance_event.dist_cause')
 
@@ -820,6 +825,7 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
     over_dam_ext_ids = concept_id_mappings['Overall Damage Extent']
 
     estado_de_conservacao = sicg_site_series['Estado.de.Conservação'] if not pd.isna(sicg_site_series['Estado.de.Conservação']) else None
+    #TODO integrate these two
     estado_de_preservacao = sicg_site_series['Estado.de.Preservação'] if not pd.isna(sicg_site_series['Estado.de.Preservação']) else None
     entorno_do_bem = sicg_site_series['Entorno.do.bem'] if not pd.isna(sicg_site_series['Entorno.do.bem']) else None
 
