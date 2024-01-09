@@ -11,6 +11,7 @@ from shapely.geometry import shape
 import id_cipher
 from database_interface import DatabaseInterface
 from exceptions import MAPHSAParserException
+from mappings import MapperManager
 
 
 def create_input_dataframes(input_file: pathlib.Path) -> pd.DataFrame:
@@ -63,14 +64,18 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
 def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
     geom_ext_cert_definite_concept_id = concept_id_mappings['Geometry Extent Certainty']['Negligible']
-    loc_cert_definite_concept_id = concept_id_mappings['Location Certainty']['Definite']
-    loc_cert_negligible_concept_id = concept_id_mappings['Location Certainty']['Negligible']
+
+    loc_cert_id_mappings = concept_id_mappings['Location Certainty']
+
     sys_ref_id = concept_id_mappings['Spatial Coordinates Reference System Datum']['WGS84']
 
     grid_id = DatabaseInterface.get_placeholder_entity_id('grid')
 
     # Location Certainty
     loc_cert_string = sicg_site_series["Heritage Location Function Certainty"]
+    loc_cert_mapper = MapperManager.get_mapper('icanh', 'her_geom',  'loc_cert')
+    loc_cert_name = loc_cert_mapper.get_field_mapping(loc_cert_string)
+    loc_cert_id = loc_cert_id_mappings[loc_cert_name]
 
     # Lat, long, polygon
     if (sicg_site_series['GeoJSON Lines']) != '':
@@ -79,7 +84,7 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         (lat, long, polygon) = (None, None, None)
 
     her_geom_id = DatabaseInterface.insert_entity('her_geom', {
-        'loc_cert': loc_cert_definite_concept_id,
+        'loc_cert': loc_cert_id,
         'geom_ext_cert': geom_ext_cert_definite_concept_id,
         'sys_ref': sys_ref_id,
         'lat': 0 if lat is None else lat,

@@ -1,6 +1,7 @@
 
 import json
 
+from mappings.mappers.icanh.icanh_mappers import ICANHMapper
 from mappings.mappers.sicg.sicg_mappers import SICGMapper, SICGPreviousResearchActivitiesMapper, SICGCulturalAffiliationMapper, \
     SICGComponentTypeMapper, SICGFeatureTypeMapper, SICGArtefactCategoryMapper, SICGEnvironmentAssessmentParamMapper, \
     SICGHydrologyTypeMapper
@@ -8,11 +9,18 @@ from exceptions import MAPHSAParserException
 
 import pandas as pd
 
+from source_parser import ExistingSources
+
 
 class MapperManager:
 
     active_mappers = {}
     missing_values: pd.DataFrame = pd.DataFrame(columns=["value", "filtered_value", "source", "target", "count"])
+
+    default_mappers = {
+        ExistingSources.sicg.value: SICGMapper,
+        ExistingSources.icanh.value: ICANHMapper,
+    }
 
     sicg_specialized_mappers = {
         'arch_ass.prev_res_act': SICGPreviousResearchActivitiesMapper,
@@ -27,8 +35,12 @@ class MapperManager:
         'hydro_info.hydro_type': SICGHydrologyTypeMapper,
     }
 
+    icanh_specialized_mapper_source = {
+        'her_geom.loc_cert': 'Site Location Certainty',
+    }
+
     specialized_mapper_indexes = {
-        'sicg': sicg_specialized_mappers,
+        ExistingSources.sicg.value: sicg_specialized_mappers,
 
     }
 
@@ -36,14 +48,28 @@ class MapperManager:
     def get_mapper(cls, source_name: str, table_name: str, field_name: str):
 
         try:
-            mapper_key = f"{table_name}.{field_name}"
-            specialized_mapper_index = cls.specialized_mapper_indexes[source_name]
-            mapper_class = specialized_mapper_index[mapper_key] if mapper_key in specialized_mapper_index.keys()\
-                else SICGMapper
+            mapper_key = f"{source_name}.{table_name}.{field_name}"
 
+            # If the mapper has not been loaded, load it
             if mapper_key not in cls.active_mappers.keys():
-                mapping_file_url = f"mappings/mappers/{source_name}/{table_name}.{field_name}.json"
-                mappings = json.load(open(mapping_file_url, 'r'))
+
+                if source_name == ExistingSources.icanh.value:
+                    mapper_class = ICANHMapper
+                else:
+                    specialized_mapper_index = cls.specialized_mapper_indexes[source_name]
+                    mapper_class = specialized_mapper_index[mapper_key] \
+                        if mapper_key in specialized_mapper_index.keys() else SICGMapper
+
+                if source_name == ExistingSources.icanh.value:
+                    mapping_file_url = f"mappings/mappers/{source_name}/master_mapper.json"
+                    mapping_subindex = cls.icanh_specialized_mapper_source[f"{table_name}.{field_name}"]
+                    master_mappings = json.load(open(mapping_file_url, 'r'))
+                    mappings = master_mappings[mapping_subindex]
+
+                else:
+                    mapping_file_url = f"mappings/mappers/{source_name}/{table_name}.{field_name}.json"
+                    mappings = json.load(open(mapping_file_url, 'r'))
+
                 cls.active_mappers[mapper_key] = mapper_class(mappings, f"{table_name}.{field_name}")
 
             mapper = cls.active_mappers[mapper_key]
