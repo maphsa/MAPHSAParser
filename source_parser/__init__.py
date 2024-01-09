@@ -1,9 +1,6 @@
 import uuid
 from enum import Enum
 
-from source_parser.sicg import sicg_parser
-from source_parser.icanh import icanh_parser
-
 
 class ExistingSources(Enum):
     sicg = 'sicg'
@@ -21,7 +18,7 @@ source_meta = {
         'date': '21.7.2023',
         'id_field': 'SICG_ID',
         'namespace': uuid.UUID('d08c3d93-3d3e-431d-affe-0d7bb1a839ba'),
-        'parser': sicg_parser,
+        'parser': 'sicg_parser',
         'source_description': 'Parsed SICG legacy data',
         'polygon_suffix': '_polygons.geojson'
     },
@@ -31,7 +28,7 @@ source_meta = {
         'date': '8.1.2024',
         'id_field': 'ICANH_ID',
         'namespace': uuid.UUID('ca1a1d87-fa84-4926-8cc0-acc370916d81'),
-        'parser': icanh_parser,
+        'parser': 'icanh_parser',
         'source_description': 'Delivered ICANH data',
         'polygon_suffix': '_polygons.geojson'
     }

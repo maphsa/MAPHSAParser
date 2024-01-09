@@ -23,7 +23,7 @@ def filter_incanh_sites(file_csv: str):
     df = df.map(parse_cell_value)
 
     df.insert(0, 'ICANH_ID', '')
-    df['ICANH_ID'] = df['Site Name'] + '_' + (np.arange(df.shape[0]) + 1).astype(str)
+    df['ICANH_ID'] = df['Site Name'] + '_' + (np.arange(df.shape[0]) + 2).astype(str)
 
     output_file_url = file_csv.replace('.csv', '_filtered.csv')
     df.to_csv(output_file_url, sep=',', index=False)
