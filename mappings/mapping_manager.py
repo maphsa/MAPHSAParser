@@ -1,9 +1,9 @@
 
 import json
 
-from mappings.mappers.mappers import Mapper, PreviousResearchActivitiesMapper, CulturalAffiliationMapper, \
-    ComponentTypeMapper, FeatureTypeMapper, ArtefactCategoryMapper, EnvironmentAssessmentParamMapper, \
-    HydrologyTypeMapper
+from mappings.mappers.sicg.sicg_mappers import SICGMapper, SICGPreviousResearchActivitiesMapper, SICGCulturalAffiliationMapper, \
+    SICGComponentTypeMapper, SICGFeatureTypeMapper, SICGArtefactCategoryMapper, SICGEnvironmentAssessmentParamMapper, \
+    SICGHydrologyTypeMapper
 from exceptions import MAPHSAParserException
 
 import pandas as pd
@@ -14,37 +14,42 @@ class MapperManager:
     active_mappers = {}
     missing_values: pd.DataFrame = pd.DataFrame(columns=["value", "filtered_value", "source", "target", "count"])
 
-    specialized_mappers = {
-        'arch_ass.prev_res_act': PreviousResearchActivitiesMapper,
-        'site_cult_aff.cult_aff': CulturalAffiliationMapper,
-        'built_comp.comp_type': ComponentTypeMapper,
-        'her_feature.feat_type': FeatureTypeMapper,
-        'her_find.art_cat_concept_list_id': ArtefactCategoryMapper,
-        'env_assessment.topo_type': EnvironmentAssessmentParamMapper,
-        'env_assessment.lcov_type': EnvironmentAssessmentParamMapper,
-        'env_assessment.soil_class': EnvironmentAssessmentParamMapper,
-        'env_assessment.l_use_type': EnvironmentAssessmentParamMapper,
-        'hydro_info.hydro_type': HydrologyTypeMapper,
+    sicg_specialized_mappers = {
+        'arch_ass.prev_res_act': SICGPreviousResearchActivitiesMapper,
+        'site_cult_aff.cult_aff': SICGCulturalAffiliationMapper,
+        'built_comp.comp_type': SICGComponentTypeMapper,
+        'her_feature.feat_type': SICGFeatureTypeMapper,
+        'her_find.art_cat_concept_list_id': SICGArtefactCategoryMapper,
+        'env_assessment.topo_type': SICGEnvironmentAssessmentParamMapper,
+        'env_assessment.lcov_type': SICGEnvironmentAssessmentParamMapper,
+        'env_assessment.soil_class': SICGEnvironmentAssessmentParamMapper,
+        'env_assessment.l_use_type': SICGEnvironmentAssessmentParamMapper,
+        'hydro_info.hydro_type': SICGHydrologyTypeMapper,
+    }
+
+    specialized_mapper_indexes = {
+        'sicg': sicg_specialized_mappers,
+
     }
 
     @classmethod
-    def get_mapper(cls, table_name: str, field_name: str):
+    def get_mapper(cls, source_name: str, table_name: str, field_name: str):
 
         try:
             mapper_key = f"{table_name}.{field_name}"
-
-            mapper_class = cls.specialized_mappers[mapper_key] if mapper_key in cls.specialized_mappers.keys()\
-                else Mapper
+            specialized_mapper_index = cls.specialized_mapper_indexes[source_name]
+            mapper_class = specialized_mapper_index[mapper_key] if mapper_key in specialized_mapper_index.keys()\
+                else SICGMapper
 
             if mapper_key not in cls.active_mappers.keys():
-                mapping_file_url = f"mappings/mappers/{table_name}.{field_name}.json"
+                mapping_file_url = f"mappings/mappers/{source_name}/{table_name}.{field_name}.json"
                 mappings = json.load(open(mapping_file_url, 'r'))
                 cls.active_mappers[mapper_key] = mapper_class(mappings, f"{table_name}.{field_name}")
 
             mapper = cls.active_mappers[mapper_key]
 
         except Exception:
-            raise MAPHSAParserException(f"Unable to get mapper file for {table_name}.{field_name}")
+            raise MAPHSAParserException(f"Unable to get mapper file for {source_name} {table_name}.{field_name}")
 
         return mapper
 
