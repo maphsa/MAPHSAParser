@@ -48,7 +48,7 @@ class MapperManager:
     def get_mapper(cls, source_name: str, table_name: str, field_name: str):
 
         try:
-            mapper_key = f"{source_name}.{table_name}.{field_name}"
+            mapper_key = f"{table_name}.{field_name}"
 
             # If the mapper has not been loaded, load it
             if mapper_key not in cls.active_mappers.keys():
