@@ -1,10 +1,8 @@
 DB_NAME = 'qgis_dev'
 DB_HOST = 'localhost'
-# DB_NAME = 'maphsa_qgis'
-# DB_HOST = '10.60.15.0'
 DB_PORT = 5432
-DB_USERNAME = 'postgres'
-DB_PASSWORD = 'postgis'
+DB_USERNAME = ''
+DB_PASSWORD = ''
 
 DB_AUTOCOMMIT = True
 DB_ISOLATION_LEVEL = 1
