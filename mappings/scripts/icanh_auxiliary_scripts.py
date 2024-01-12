@@ -5,7 +5,7 @@ import pandas as pd
 
 def parse_cell_value(_value: str):
     if _value == '' or pd.isna(_value):
-        return np.NAN
+        return _value
     cell_set = set(eval(_value))
     if len(cell_set) == 1:
         return cell_set.pop()
