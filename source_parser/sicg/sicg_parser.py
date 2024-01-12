@@ -131,8 +131,8 @@ def process_geom(_lat, _long, _polygon):
 def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
     geom_ext_cert_definite_concept_id = concept_id_mappings['Geometry Extent Certainty']['Negligible']
-    loc_cert_definite_concept_id = concept_id_mappings['Location Certainty']['Definite']
-    loc_cert_negligible_concept_id = concept_id_mappings['Location Certainty']['Negligible']
+    loc_cert_definite_concept_id = concept_id_mappings['Site Location Certainty']['Definite']
+    loc_cert_negligible_concept_id = concept_id_mappings['Site Location Certainty']['Negligible']
     sys_ref_id = concept_id_mappings['Spatial Coordinates Reference System Datum']['WGS84']
 
     grid_id = DatabaseInterface.get_placeholder_entity_id('grid')
@@ -159,7 +159,8 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         'long': 0 if long is None else long,
         'her_maphsa_id': her_maphsa_id,
         'grid_id': grid_id,
-        'wkb_geometry': "NULL"
+        "her_polygon": None,
+        'wkb_geometry': None
     })
 
 
