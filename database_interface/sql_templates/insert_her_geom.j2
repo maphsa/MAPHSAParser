@@ -1,1 +1,6 @@
-INSERT INTO public.her_geom(id_loc_, loc_cert, geom_ext_ert, sys_ref, lat, long, her_maphsa_id, grid_id, wkb_geometry) VALUES (DEFAULT, {{  loc_cert  }}, {{  geom_ext_cert  }}, {{  sys_ref  }}, {{  lat  }}, {{  long  }}, {{  her_maphsa_id  }}, {{  grid_id  }}, {{  wkb_geometry  }})	RETURNING id_loc_;
+INSERT INTO public.her_geom(id_loc_, loc_cert, geom_ext_ert, sys_ref, lat, long, her_maphsa_id, grid_id, wkb_geometry{% if her_polygon is not none %}, her_polygon{% endif %})
+VALUES (DEFAULT, {{  loc_cert  }}, {{  geom_ext_cert  }}, {{  sys_ref  }}, {{  lat  }}, {{  long  }}, {{  her_maphsa_id  }}, {{  grid_id  }}
+, {% if wkb_geometry is not none %}ST_GeomFromText('{{wkb_geometry}}')  {% else %} NULL {% endif %}
+{% if her_polygon is not none %}, ST_GeomFromText('{{her_polygon}}'){% endif %}
+)
+RETURNING id_loc_;
