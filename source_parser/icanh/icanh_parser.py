@@ -16,6 +16,13 @@ from exceptions import MAPHSAParserException
 from mappings import MapperManager
 
 
+def polymorphic_field_to_list(source_field) -> list:
+    if '[' in source_field and ']' in source_field:
+        return eval(source_field)
+    else:
+        return [source_field]
+
+
 def create_input_dataframes(input_file: pathlib.Path) -> pd.DataFrame:
     with open(input_file, 'r') as f:
         contents = f.read()
@@ -30,7 +37,6 @@ def clean_input_dataframe(input_dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
-
     icanh_id = icanh_site_series[source_meta['id_field']]
     uuid = id_cipher.generate_entity_uuid5(icanh_site_series, source_meta)
 
@@ -48,39 +54,37 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
     # Create these methods for ICANH
 
     parse_her_geom(icanh_site_series, source_meta, her_maphsa_id)
+    parse_her_loc_sum(icanh_site_series, source_meta, her_maphsa_id)
     '''
-    parse_her_loc_sum(sicg_site_series, source_meta, her_maphsa_id)
-    parse_her_admin_div(sicg_site_series, source_meta, her_maphsa_id)
+    parse_her_admin_div(icanh_site_series, source_meta, her_maphsa_id)
 
-    parse_arch_ass(sicg_site_series, source_meta, her_maphsa_id)
+    parse_arch_ass(icanh_site_series, source_meta, her_maphsa_id)
     # Parsing two branches simultaneously
-    parse_built_comp_her_feature(sicg_site_series, source_meta, her_maphsa_id)
+    parse_built_comp_her_feature(icanh_site_series, source_meta, her_maphsa_id)
 
-    parse_her_find(sicg_site_series, source_meta, her_maphsa_id)
+    parse_her_find(icanh_site_series, source_meta, her_maphsa_id)
 
-    parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
-    parse_her_cond_ass(sicg_site_series, source_meta, her_maphsa_id)
+    parse_env_assessment(icanh_site_series, source_meta, her_maphsa_id)
+    parse_her_cond_ass(icanh_site_series, source_meta, her_maphsa_id)
     '''
 
 
-def map_icanh_value(data_series, source_column_name, target_arches_collection_name, target_table_name,
+def map_icanh_value(source_value, target_arches_collection_name, target_table_name,
                     target_field_name, fallback_value=None):
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
     loc_cert_id_mappings = concept_id_mappings[target_arches_collection_name]
-    loc_cert_string = data_series[source_column_name]
-    if not pd.isna(loc_cert_string):
+    if not pd.isna(source_value):
         loc_cert_mapper = MapperManager.get_mapper('icanh', target_table_name, target_field_name)
-        loc_cert_name = loc_cert_mapper.get_field_mapping(loc_cert_string)
+        loc_cert_name = loc_cert_mapper.get_field_mapping(source_value)
         return loc_cert_id_mappings[loc_cert_name]
     elif fallback_value is not None:
         return loc_cert_id_mappings[fallback_value]
     else:
-        raise ValueError(f"Missing source and fallback values for mapping {source_column_name}"
+        raise ValueError(f"Missing source and fallback values for mapping {source_value}"
                          f" into {target_arches_collection_name} at icanh.{target_table_name}.{target_field_name}")
 
 
 def parse_her_geom(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int):
-
     # Parse lat, long, polygon
     if not pd.isna(icanh_site_series['GeoJSON Lines']):
         (lat, long, polygon) = process_geom(icanh_site_series['GeoJSON Lines'])
@@ -91,13 +95,13 @@ def parse_her_geom(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
     if lat is None and long is None:
         loc_cert_id = DatabaseInterface.get_concept_id_mappings()['Site Location Certainty']['Negligible']
     else:
-        loc_cert_id = map_icanh_value(icanh_site_series, "Site Location Certainty", 'Site Location Certainty',
+        loc_cert_id = map_icanh_value(icanh_site_series["Site Location Certainty"], 'Site Location Certainty',
                                       'her_geom', 'loc_cert', fallback_value='Unknown')
 
     if polygon is None:
         geom_ext_cert_id = DatabaseInterface.get_concept_id_mappings()['Geometry Extent Certainty']['Negligible']
     else:
-        geom_ext_cert_id = map_icanh_value(icanh_site_series, "Site Location Certainty", 'Site Location Certainty',
+        geom_ext_cert_id = map_icanh_value(icanh_site_series["Site Location Certainty"], 'Site Location Certainty',
                                            'her_geom', 'loc_cert', fallback_value='Unknown')
 
     # System ref ID
@@ -118,22 +122,9 @@ def parse_her_geom(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
         'wkb_geometry': Point(long, lat).wkt if lat is not None and long is not None else None
     })
 
-def get_polygon_feature(polygon_data: dict) -> dict:
-    return {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {},
-                "geometry": polygon_data
-            }
-        ]
-    }
-
 
 # Return Lat, Long, Polygon if present
 def process_geom(geojson_data_string):
-
     geojson_data = geojson.loads(geojson_data_string)
     if geojson_data['type'] == 'Point':
         (long, lat) = geojson_data['coordinates']
@@ -149,6 +140,51 @@ def process_geom(geojson_data_string):
         return centroid[1], centroid[0], shape(geojson_data).wkt
 
     raise ValueError("Unknown geojson data format")
+
+
+def parse_her_loc_sum(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int):
+    gen_descr = icanh_site_series['Site Name']
+
+    her_loc_sum_id = DatabaseInterface.insert_entity('her_loc_sum', {
+        'gen_descr': gen_descr,
+        'her_maphsa_id': her_maphsa_id
+    })
+
+    parse_her_loc_name(icanh_site_series, source_meta, her_loc_sum_id)
+    parse_her_loc_type(icanh_site_series, source_meta, her_loc_sum_id)
+
+
+def parse_her_loc_name(icanh_site_series: Series, source_meta: dict, her_loc_sum_id: int):
+    her_loc_name = icanh_site_series['Site Name']
+    her_loc_name_type = map_icanh_value(icanh_site_series["Heritage Location Name Type"],
+                                        'Heritage Location Name Type',
+                                        'her_loc_name', 'her_loc_name_type')
+
+    DatabaseInterface.insert_entity(target_table='her_loc_name', target_data={
+        'her_loc_name': her_loc_name,
+        'her_loc_sum_id': her_loc_sum_id,
+        'her_loc_name_type': her_loc_name_type
+    })
+
+    return
+
+
+def parse_her_loc_type(icanh_site_series: Series, source_meta: dict, her_loc_sum_id: int):
+    her_loc_type_cert = DatabaseInterface.get_concept_id_mapping('Heritage Location Type Certainty', 'Definite')
+
+    her_loc_type_list = polymorphic_field_to_list(icanh_site_series['Heritage Location Type'])
+
+    for her_loc_type_value in her_loc_type_list:
+        her_loc_type = map_icanh_value(her_loc_type_value, 'Heritage Location Type',
+                                       'her_loc_type', 'her_loc_type')
+
+        her_loc_type_id = DatabaseInterface.insert_entity('her_loc_type', {
+            'her_loc_type': her_loc_type,
+            'her_loc_type_cert': her_loc_type_cert,
+            'her_loc_sum_id': her_loc_sum_id
+        })
+
+    return
 
 
 def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, insert_data: bool):

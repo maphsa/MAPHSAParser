@@ -37,6 +37,8 @@ class MapperManager:
 
     icanh_specialized_mapper_source = {
         'her_geom.loc_cert': 'Site Location Certainty',
+        'her_loc_name.her_loc_name_type': 'Heritage Location Name Type',
+        'her_loc_type.her_loc_type': 'Heritage Location Type',
     }
 
     specialized_mapper_indexes = {
