@@ -39,6 +39,7 @@ class MapperManager:
         'her_geom.loc_cert': 'Site Location Certainty',
         'her_loc_name.her_loc_name_type': 'Heritage Location Name Type',
         'her_loc_type.her_loc_type': 'Heritage Location Type',
+        'her_admin_div.admin_type': 'Administrative Division Type',
     }
 
     specialized_mapper_indexes = {

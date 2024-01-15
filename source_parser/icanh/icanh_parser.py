@@ -4,6 +4,7 @@ from io import StringIO
 import pathlib
 
 import geojson
+import numpy as np
 import pandas as pd
 from pandas import Series
 from shapely import Point
@@ -55,9 +56,9 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
 
     parse_her_geom(icanh_site_series, source_meta, her_maphsa_id)
     parse_her_loc_sum(icanh_site_series, source_meta, her_maphsa_id)
-    '''
-    parse_her_admin_div(icanh_site_series, source_meta, her_maphsa_id)
 
+    parse_her_admin_div(icanh_site_series, source_meta, her_maphsa_id)
+    '''
     parse_arch_ass(icanh_site_series, source_meta, her_maphsa_id)
     # Parsing two branches simultaneously
     parse_built_comp_her_feature(icanh_site_series, source_meta, her_maphsa_id)
@@ -182,6 +183,32 @@ def parse_her_loc_type(icanh_site_series: Series, source_meta: dict, her_loc_sum
             'her_loc_type': her_loc_type,
             'her_loc_type_cert': her_loc_type_cert,
             'her_loc_sum_id': her_loc_sum_id
+        })
+
+    return
+
+
+def parse_her_admin_div(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int):
+    country_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type', 'Country')
+    state_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
+                                                                   'Municipality')
+
+    DatabaseInterface.insert_entity('her_admin_div', {
+        'admin_div_name': 'Colombia',
+        'admin_type': country_admin_type_id,
+        'her_maphsa_id': her_maphsa_id
+    })
+
+    admin_div_name = icanh_site_series['Administrative Division Name']
+    admin_type_value = icanh_site_series['Administrative Division Type']
+    if not pd.isna(admin_div_name) and pd.isna(admin_type_value):
+        admin_type = map_icanh_value(admin_type_value, 'Administrative Division Type',
+                                       'her_admin_div', 'admin_type')
+
+        DatabaseInterface.insert_entity('her_admin_div', {
+            'admin_div_name': admin_div_name,
+            'admin_type': admin_type,
+            'her_maphsa_id': her_maphsa_id
         })
 
     return
