@@ -337,7 +337,7 @@ def parse_her_admin_div(sicg_site_series: Series, source_meta: dict, her_maphsa_
     municipality_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
                                                                           'Municipality')
     state_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
-                                                                   'Municipality')
+                                                                   'State')
 
     DatabaseInterface.insert_entity('her_admin_div', {
         'admin_div_name': 'Brazil',
