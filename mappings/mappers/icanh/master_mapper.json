@@ -278,13 +278,19 @@
     },
     "Cultural Affiliation":
     {
+        "bajo magdalena": "Bajo Magdalena",
         "catanga": "Catanga",
         "chimila": "Chimila",
         "chimilia": "Chimila",
         "chitarero": "Chitarero",
+        "complejo crespo": "Complejo Crespo",
+        "granada": "Granada",
         "guahibo": "Sikuani",
         "guayupe": "Guayupe",
         "herrera": "Herrera",
+        "macana": "Macana",
+        "mocana": "Macana",
+        "neguanje": "Neguanje",
         "los macana": "Macana",
         "malibu": "Malibú",
         "malibues": "Malibú",
@@ -292,14 +298,19 @@
         "muisca": "Muisca",
         "muiscas": "Muisca",
         "portacelli": "Portacelli",
-        "puerto caldas   granada": "Puerto Caldas Granada",
+        "puerto caldas": "Puerto Caldas",
+        "sinu": "Zenú",
         "sinú": "Zenú",
         "spanish conquers": "Spanish Colonial",
         "tairona": "Tayrona",
         "tayrona": "Tayrona",
+        "tierralta": "Tierralta",
         "tupe": "Tupe",
         "zenues": "Zenú",
-        "zenú": "Zenú"
+        "zenú": "Zenú",
+        "zenu": "Zenú",
+        "not informed": "Not Informed",
+        "unknown": "Other"
     },
     "Cultural Affiliation Certainty":
     {
@@ -711,6 +722,28 @@
         "meters(m)": "Meters (m)",
         "square meters": "Square Meters (m2)"
     },
+    "Overall Morphology":
+    {
+        "surface feature": "Surface Feature",
+        "flat": "Surface Feature",
+        "positive feature": "Positive/Built Feature",
+        "elevated mound": "Positive/Built Feature",
+        "flat surface": "Surface Feature",
+        "terrace mound": "Positive/Built Feature",
+        "terraced mound": "Positive/Built Feature",
+        "mound": "Positive/Built Feature",
+        "terrace": "Positive/Built Feature",
+        "negative": "Negative/Cut/Dug Feature",
+        "dug feature": "Negative/Cut/Dug Feature",
+        "depression": "Negative/Cut/Dug Feature",
+        "multi feature": "Unknown",
+        "rock shelter": "Surface Feature",
+        "structure": "Positive/Built Feature",
+        "slope": "Surface Feature",
+        "unknown": "Unknown",
+        "unknwoun": "Unknown",
+        "not informed": "Not Informed"
+    },
     "Shape":
     {
         "circular": "Circular",
@@ -720,7 +753,8 @@
         "rectangular": "Rectangular",
         "square": "Square",
         "straight": "Other",
-        "unknown": "Unknown"
+        "unknown": "Other",
+        "not informed": "Not Informed"
     },
     "Site Location Certainty":
     {

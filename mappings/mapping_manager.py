@@ -40,6 +40,9 @@ class MapperManager:
         'her_loc_name.her_loc_name_type': 'Heritage Location Name Type',
         'her_loc_type.her_loc_type': 'Heritage Location Type',
         'her_admin_div.admin_type': 'Administrative Division Type',
+        'arch_ass.her_morph': 'Overall Morphology',
+        'arch_ass.her_shape': 'Shape',
+        'site_cult_aff.cult_aff': 'Cultural Affiliation',
     }
 
     specialized_mapper_indexes = {

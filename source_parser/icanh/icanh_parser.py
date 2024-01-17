@@ -55,12 +55,14 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
     # Create these methods for ICANH
 
     parse_her_geom(icanh_site_series, source_meta, her_maphsa_id)
+
     parse_her_loc_sum(icanh_site_series, source_meta, her_maphsa_id)
 
     parse_her_admin_div(icanh_site_series, source_meta, her_maphsa_id)
-    '''
+
     parse_arch_ass(icanh_site_series, source_meta, her_maphsa_id)
     # Parsing two branches simultaneously
+    '''
     parse_built_comp_her_feature(icanh_site_series, source_meta, her_maphsa_id)
 
     parse_her_find(icanh_site_series, source_meta, her_maphsa_id)
@@ -212,6 +214,205 @@ def parse_her_admin_div(icanh_site_series: Series, source_meta: dict, her_maphsa
         })
 
     return
+
+
+def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
+    # Previous Research Activities
+    # TODO Only a few rows present, no mappings
+    prev_res_act_id = DatabaseInterface.create_concept_list('Previous Research Activities', [])
+
+    # Shape
+    if pd.isna(icanh_site_series['Shape']):
+        her_shape_values = ['not informed']
+    else:
+        her_shape_values = polymorphic_field_to_list(icanh_site_series['Shape'])
+
+    mapped_her_shape_values = []
+    for her_shape_value in her_shape_values:
+        mapped_her_shape = map_icanh_value(her_shape_value, 'Shape',
+                                    'arch_ass', 'her_shape')
+        mapped_her_shape_values.append(mapped_her_shape)
+
+    her_shape_id = mapped_her_shape_values[0]  # TODO disambiguate or reduce somehow
+
+    # Overall Morphology
+
+    her_morph_values: set = set()
+
+    if not pd.isna(icanh_site_series['Overall Morphology']):
+        her_morph_values.update(polymorphic_field_to_list(icanh_site_series['Overall Morphology']))
+
+    if not pd.isna(icanh_site_series['Overall Morphology.1']):
+        her_morph_values.update(polymorphic_field_to_list(icanh_site_series['Overall Morphology.1']))
+
+    if len(her_morph_values) == 0:
+        her_morph_values.add('not informed')
+
+    mapped_her_morph_values = []
+    for her_morph_value in her_morph_values:
+        mapped_her_morph = map_icanh_value(her_morph_value, 'Overall Morphology',
+                                        'arch_ass', 'her_morph')
+        mapped_her_morph_values.append(mapped_her_morph)
+
+    her_morph_id = mapped_her_shape_values[0]  # TODO disambiguate or reduce somehow
+
+    # Heritage Location Orientation
+    her_loc_orient_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Orientation']['Not Informed']
+
+    # Overall Archaeological Certainty
+    overall_arch_cert_id = DatabaseInterface.get_concept_id_mappings()['Overall Archaeological Certainty']['Definite']
+
+    arch_ass_id = DatabaseInterface.insert_entity('arch_ass', {
+        'her_maphsa_id': her_maphsa_id,
+        'prev_res_act': prev_res_act_id,
+        'her_morph': her_morph_id,
+        'her_shape': her_shape_id,
+        'her_loc_orient': her_loc_orient_id,  # TODO
+        'o_arch_cert': overall_arch_cert_id
+    })
+
+    # Cultural affiliation
+
+    confirmed_ca_certainty_id = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation Certainty'][
+        'Confirmed']
+
+    ca_values: set = set()
+
+    if not pd.isna(icanh_site_series['Cultural Affiliation']):
+        ca_values.update(polymorphic_field_to_list(icanh_site_series['Cultural Affiliation']))
+
+    if not pd.isna(icanh_site_series['Cultural Affiliation.1']):
+        ca_values.update(polymorphic_field_to_list(icanh_site_series['Cultural Affiliation.1']))
+
+    if len(ca_values) == 0:
+        ca_values.add('not informed')
+
+    ca_ids = []
+    # Patch odd value # TODO Ask about this
+    if "puerto caldas   granada" in ca_values:
+        ca_values.remove("puerto caldas   granada")
+        ca_values.add("puerto caldas")
+        ca_values.add("granada")
+
+    for ca_value in ca_values:
+        ca_id = map_icanh_value(ca_value, 'Cultural Affiliation', 'site_cult_aff', 'cult_aff')
+        ca_ids.append(ca_id)
+
+    for ca_id in ca_ids:
+
+        site_cult_aff_id = DatabaseInterface.insert_entity('site_cult_aff', {
+            'arch_ass_id': arch_ass_id,
+            'cult_aff': ca_id,
+            'cult_aff_certainty': confirmed_ca_certainty_id
+
+        })
+
+    '''
+    # Period
+
+    dated_ca_names = [ca_name for ca_name in ca_names if ca_name not in ('Other', 'Not Informed')]
+
+    dates = []
+    if len(dated_ca_names) > 0:
+        date_mapper = mappings.MapperManager.get_mapper('sicg', 'sites_timespace', 'from_to_date')
+        for ca_name in dated_ca_names:
+            try:
+                date_string = date_mapper.get_field_mapping(ca_name)
+                if date_string != '':
+                    dates += [int(d) for d in date_string.split(',')]
+            except MAPHSAMissingMappingException as e:
+                # TODO ignore undated cultural affiliation values?
+                continue
+
+    if len(dates) > 0:
+        dates.sort()
+
+        from_year = dates[-1]
+        to_year = dates[0]
+
+        pc_id = DatabaseInterface.get_concept_id_mappings()['Period Certainty']['Unconfirmed']
+
+        sites_timespace_id = DatabaseInterface.insert_entity('sites_timespace', {
+            'arch_ass_id': arch_ass_id,
+            'period_cert': pc_id,
+            'from_year': from_year,
+            'to_year': to_year,
+
+        })
+    
+    # Function
+
+    if not pd.isna(sicg_site_series['tipo']):
+        hlfc_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Function Certainty']['Definite']
+        function_mapper = mappings.MapperManager.get_mapper('sicg', 'her_loc_funct', 'her_loc_funct')
+        function_ids = DatabaseInterface.get_concept_id_mappings()['Heritage Location Function']
+
+        her_loc_funct_name = function_mapper.get_field_mapping(sicg_site_series['tipo'])
+
+        if her_loc_funct_name != 'Not Informed':
+            her_loc_funct_id = function_ids[her_loc_funct_name]
+
+            her_loc_funct_id = DatabaseInterface.insert_entity('her_loc_funct', {
+                'her_loc_funct': her_loc_funct_id,
+                'her_loc_fun_cert': hlfc_id,
+                'arch_ass_id': arch_ass_id
+            })
+
+    # Heritage Location Measurement
+
+    def insert_measurement(source_value: float, dimension: str, measurement_unit: str, her_meas_type: int):
+
+        source_value = float(source_value)
+
+        if not pd.isna(source_value) and source_value != 0:
+            her_dimen = DatabaseInterface.get_concept_id_mappings()['Dimension'][dimension]
+            her_meas_unit = DatabaseInterface.get_concept_id_mappings()['Measurement Unit'][measurement_unit]
+            her_meas_value = source_value
+
+            her_loc_meas_id = DatabaseInterface.insert_entity('her_loc_meas', {
+                'her_dimen': her_dimen,
+                'her_meas_unit': her_meas_unit,
+                'her_meas_type': her_meas_type,
+                'her_meas_value': her_meas_value,
+                'arch_ass_id': arch_ass_id
+            })
+
+        return arch_ass_id
+
+    # TODO Refactor as Mapper with json file?
+    match sicg_site_series['medicao']:
+
+        case 'instrumento':
+            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Handheld GPS']
+        case 'estimada':
+            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Estimated/Paced']
+        case 'passo':
+            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Estimated/Paced']
+        case 'mapa':
+            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Maps']
+        case _:
+            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type'][
+                'Unknown-Recorded From Legacy Data']
+
+    for source_measurement_field in [
+        ('comprimento', 'Length', 'Meters (m)'),
+        ('largura', 'Breadth/Width', 'Meters (m)'),
+        ('area', 'Area', 'Square Meters (m2)')
+    ]:
+        try:
+            insert_measurement(
+                sicg_site_series[source_measurement_field[0]],
+                source_measurement_field[1],
+                source_measurement_field[2],
+                measurement_type)
+
+        except ValueError as ve:
+            missing_value = f"{sicg_site_series[source_measurement_field[0]]}:{source_measurement_field[1]}:{source_measurement_field[2]}"
+            MapperManager.add_missing_value(missing_value, missing_value,
+                                            f"{source_meta['name']}:{sicg_site_series['X']}:{source_measurement_field}",
+                                            'her_loc_meas.her_meas_value')
+            continue
+    '''
 
 
 def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, insert_data: bool):
