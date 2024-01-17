@@ -391,20 +391,27 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         her_shape_name = shape_mapper.get_field_mapping(sicg_site_series['forma'])
         her_shape_id = shape_mapping_ids[her_shape_name]
 
+    # Overall Morphology
+    her_morph_id = DatabaseInterface.get_concept_id_mappings()['Overall Morphology']['Unknown']
+
+    # Heritage Location Orientation
+    her_loc_orient_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Orientation']['Not Informed']
+
     # Overall Certainty
     overall_arch_cert_id = DatabaseInterface.get_concept_id_mappings()['Overall Archaeological Certainty']['Definite']
+
     arch_ass_id = DatabaseInterface.insert_entity('arch_ass', {
         'her_maphsa_id': her_maphsa_id,
         'prev_res_act': prev_res_act_id,
-        'her_morph': 1,  # TODO
+        'her_morph': her_morph_id,
         'her_shape': her_shape_id,
-        'her_loc_orient': 1,  # TODO
+        'her_loc_orient': her_loc_orient_id,
         'o_arch_cert': overall_arch_cert_id
     })
 
     # Cultural affiliation
 
-    unconfirmed_ca_certainty_id = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation Certainty'][
+    confirmed_ca_certainty_id = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation Certainty'][
         'Confirmed']
     ca_mapping_ids = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation']
     ca_mapper = mappings.MapperManager.get_mapper('sicg', 'site_cult_aff', 'cult_aff')
@@ -453,7 +460,7 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         site_cult_aff_id = DatabaseInterface.insert_entity('site_cult_aff', {
             'arch_ass_id': arch_ass_id,
             'cult_aff': ca_id,
-            'cult_aff_certainty': unconfirmed_ca_certainty_id
+            'cult_aff_certainty': confirmed_ca_certainty_id
 
         })
 
