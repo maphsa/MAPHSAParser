@@ -227,13 +227,13 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
     else:
         her_shape_values = polymorphic_field_to_list(icanh_site_series['Shape'])
 
-    mapped_her_shape_values = []
+    mapped_her_shape_values = set()
     for her_shape_value in her_shape_values:
         mapped_her_shape = map_icanh_value(her_shape_value, 'Shape',
                                     'arch_ass', 'her_shape')
-        mapped_her_shape_values.append(mapped_her_shape)
+        mapped_her_shape_values.add(mapped_her_shape)
 
-    her_shape_id = mapped_her_shape_values[0]  # TODO disambiguate or reduce somehow
+    her_shape_id = next(iter(mapped_her_shape_values))  # TODO disambiguate or reduce somehow
 
     # Overall Morphology
 
@@ -248,13 +248,16 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
     if len(her_morph_values) == 0:
         her_morph_values.add('not informed')
 
-    mapped_her_morph_values = []
+    mapped_her_morph_values = set()
     for her_morph_value in her_morph_values:
         mapped_her_morph = map_icanh_value(her_morph_value, 'Overall Morphology',
                                         'arch_ass', 'her_morph')
-        mapped_her_morph_values.append(mapped_her_morph)
+        mapped_her_morph_values.add(mapped_her_morph)
 
-    her_morph_id = mapped_her_shape_values[0]  # TODO disambiguate or reduce somehow
+    try:
+        her_morph_id = next(iter(mapped_her_morph_values))  # TODO disambiguate or reduce somehow
+    except KeyError as ke:
+        print(ke)
 
     # Heritage Location Orientation
     her_loc_orient_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Orientation']['Not Informed']
@@ -287,7 +290,7 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
     if len(ca_values) == 0:
         ca_values.add('not informed')
 
-    ca_ids = []
+    ca_ids = set()
     # Patch odd value # TODO Ask about this
     if "puerto caldas   granada" in ca_values:
         ca_values.remove("puerto caldas   granada")
@@ -296,7 +299,7 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
 
     for ca_value in ca_values:
         ca_id = map_icanh_value(ca_value, 'Cultural Affiliation', 'site_cult_aff', 'cult_aff')
-        ca_ids.append(ca_id)
+        ca_ids.add(ca_id)
 
     for ca_id in ca_ids:
 
@@ -339,25 +342,30 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
             'to_year': to_year,
 
         })
-    
+    '''
     # Function
 
-    if not pd.isna(sicg_site_series['tipo']):
-        hlfc_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Function Certainty']['Definite']
-        function_mapper = mappings.MapperManager.get_mapper('sicg', 'her_loc_funct', 'her_loc_funct')
-        function_ids = DatabaseInterface.get_concept_id_mappings()['Heritage Location Function']
+    if not pd.isna(icanh_site_series['Heritage Location Function']):
+        her_loc_funct_values = polymorphic_field_to_list(icanh_site_series['Heritage Location Function'])
 
-        her_loc_funct_name = function_mapper.get_field_mapping(sicg_site_series['tipo'])
+        her_loc_funct_mapped_ids = set()
+        for her_loc_funct_value in her_loc_funct_values:
+            her_loc_funct_mapped_ids.add(map_icanh_value(her_loc_funct_value, 'Heritage Location Function',
+                                                         'her_loc_funct', 'her_loc_funct')
+                                         )
 
-        if her_loc_funct_name != 'Not Informed':
-            her_loc_funct_id = function_ids[her_loc_funct_name]
+        hlfc_mapped_id = map_icanh_value(icanh_site_series['Heritage Location Function Certainty'],
+                                         'Heritage Location Function Certainty',
+                                         'her_loc_funct', 'her_loc_fun_cert')
+
+        for her_loc_funct_mapped_id in her_loc_funct_mapped_ids:
 
             her_loc_funct_id = DatabaseInterface.insert_entity('her_loc_funct', {
-                'her_loc_funct': her_loc_funct_id,
-                'her_loc_fun_cert': hlfc_id,
+                'her_loc_funct': her_loc_funct_mapped_id,
+                'her_loc_fun_cert': hlfc_mapped_id,
                 'arch_ass_id': arch_ass_id
             })
-
+    '''
     # Heritage Location Measurement
 
     def insert_measurement(source_value: float, dimension: str, measurement_unit: str, her_meas_type: int):

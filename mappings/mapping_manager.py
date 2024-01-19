@@ -43,6 +43,8 @@ class MapperManager:
         'arch_ass.her_morph': 'Overall Morphology',
         'arch_ass.her_shape': 'Shape',
         'site_cult_aff.cult_aff': 'Cultural Affiliation',
+        'her_loc_funct.her_loc_funct': 'Heritage Location Function',
+        'her_loc_funct.her_loc_fun_cert': 'Heritage Location Function Certainty',
     }
 
     specialized_mapper_indexes = {
