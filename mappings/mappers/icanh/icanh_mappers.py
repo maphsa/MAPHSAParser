@@ -17,9 +17,9 @@ class ICANHMapper:
         self.field_mappings = _mappings
 
     def filter_source_value(self, source_value: str) -> str:
-        source_value = unidecode(source_value)
-        source_value = source_value.lower().strip()
-        source_value = re.sub(r'[.,()¿?]', '', source_value)
+        # source_value = unidecode(source_value)
+        # source_value = source_value.lower().strip()
+        # source_value = re.sub(r'[.,()¿?]', '', source_value)
         return source_value
 
     def get_field_mapping(self, _source_value: str) -> str:
