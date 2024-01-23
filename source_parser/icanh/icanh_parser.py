@@ -62,9 +62,9 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
 
     parse_her_feature(icanh_site_series, source_meta, her_maphsa_id)
 
-    '''
     parse_her_find(icanh_site_series, source_meta, her_maphsa_id)
 
+    '''
     parse_env_assessment(icanh_site_series, source_meta, her_maphsa_id)
     parse_her_cond_ass(icanh_site_series, source_meta, her_maphsa_id)
     '''
@@ -437,6 +437,22 @@ def parse_her_feature(icanh_site_series: Series, source_meta: dict, her_maphsa_i
 
     else:
         return
+
+
+def parse_her_find(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
+    art_cat_values = []
+    if not pd.isna(sicg_site_series['Artefact Category']):
+
+        art_cat_values = map_polymorphic_field(sicg_site_series['Artefact Category'], "Artefact Category", 'her_find', 'art_cat_concept_list_id')
+
+    art_cat_concept_list_id = DatabaseInterface.create_concept_list('Artefact Category', art_cat_values)
+
+    her_find_id = DatabaseInterface.insert_entity('her_find', {
+        'her_maphsa_id': her_maphsa_id,
+        'art_cat_concept_list_id': art_cat_concept_list_id
+    })
+
+    return her_find_id
 
 
 def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, insert_data: bool):

@@ -49,6 +49,7 @@ class MapperManager:
         'her_loc_meas.her_meas_unit': 'Measurement Unit',
         'her_loc_meas.her_meas_type': 'Measurement Type',
         'her_feature.feat_type': 'Feature Type',
+        'her_find.art_cat_concept_list_id': 'Artefact Category',
     }
 
     specialized_mapper_indexes = {
