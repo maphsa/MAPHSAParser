@@ -1,10 +1,7 @@
-import json
-import re
 from io import StringIO
 import pathlib
 
 import geojson
-import numpy as np
 import pandas as pd
 from pandas import Series
 from shapely import Point
@@ -61,6 +58,7 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
     parse_her_admin_div(icanh_site_series, source_meta, her_maphsa_id)
 
     parse_arch_ass(icanh_site_series, source_meta, her_maphsa_id)
+
     # Parsing two branches simultaneously
     '''
     parse_built_comp_her_feature(icanh_site_series, source_meta, her_maphsa_id)
@@ -75,16 +73,36 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
 def map_icanh_value(source_value, target_arches_collection_name, target_table_name,
                     target_field_name, fallback_value=None):
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
-    loc_cert_id_mappings = concept_id_mappings[target_arches_collection_name]
+    target_concept_id_mappings = concept_id_mappings[target_arches_collection_name]
     if not pd.isna(source_value):
-        loc_cert_mapper = MapperManager.get_mapper('icanh', target_table_name, target_field_name)
-        loc_cert_name = loc_cert_mapper.get_field_mapping(source_value)
-        return loc_cert_id_mappings[loc_cert_name]
+        mapper = MapperManager.get_mapper('icanh', target_table_name, target_field_name)
+        name = mapper.get_field_mapping(source_value)
+        return target_concept_id_mappings[name]
     elif fallback_value is not None:
-        return loc_cert_id_mappings[fallback_value]
+        return target_concept_id_mappings[fallback_value]
     else:
         raise ValueError(f"Missing source and fallback values for mapping {source_value}"
                          f" into {target_arches_collection_name} at icanh.{target_table_name}.{target_field_name}")
+
+
+def map_polymorphic_field(source_value, target_arches_collection_name, target_table_name, target_field_name,
+                          fallback_value=None) -> list:
+    if pd.isna(source_value):
+        if fallback_value is None:
+            raise ValueError(f"Missing fallback value for source value mapping {source_value}"
+                             f" into {target_table_name}.{target_field_name}"
+                             f" using {target_arches_collection_name} collection")
+        source_values = [fallback_value]
+    else:
+        source_values = polymorphic_field_to_list(source_value)
+
+    mapped_values = set()
+    for source_value in source_values:
+        mapped_value = map_icanh_value(source_value, target_arches_collection_name, target_table_name,
+                                       target_field_name)
+        mapped_values.add(mapped_value)
+
+    return list(mapped_values)
 
 
 def parse_her_geom(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int):
@@ -254,10 +272,7 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
                                         'arch_ass', 'her_morph')
         mapped_her_morph_values.add(mapped_her_morph)
 
-    try:
-        her_morph_id = next(iter(mapped_her_morph_values))  # TODO disambiguate or reduce somehow
-    except KeyError as ke:
-        print(ke)
+    her_morph_id = next(iter(mapped_her_morph_values))  # TODO disambiguate or reduce somehow
 
     # Heritage Location Orientation
     her_loc_orient_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Orientation']['Not Informed']
@@ -365,62 +380,41 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
                 'her_loc_fun_cert': hlfc_mapped_id,
                 'arch_ass_id': arch_ass_id
             })
-    '''
+
     # Heritage Location Measurement
 
-    def insert_measurement(source_value: float, dimension: str, measurement_unit: str, her_meas_type: int):
+    # Dimension
 
-        source_value = float(source_value)
+    if not pd.isna(icanh_site_series['Measurement Value']): # TODO some measurements have no value, inquire
 
-        if not pd.isna(source_value) and source_value != 0:
-            her_dimen = DatabaseInterface.get_concept_id_mappings()['Dimension'][dimension]
-            her_meas_unit = DatabaseInterface.get_concept_id_mappings()['Measurement Unit'][measurement_unit]
-            her_meas_value = source_value
+        if str(icanh_site_series['Measurement Value']).count('.') > 1: #TODO Ask about odd hectare value, ignoring second point in the string
+            icanh_site_series['Measurement Value'] = '.'.join(icanh_site_series['Measurement Value'].split('.')[:-1])
 
-            her_loc_meas_id = DatabaseInterface.insert_entity('her_loc_meas', {
-                'her_dimen': her_dimen,
-                'her_meas_unit': her_meas_unit,
-                'her_meas_type': her_meas_type,
-                'her_meas_value': her_meas_value,
-                'arch_ass_id': arch_ass_id
-            })
+        if pd.isna(icanh_site_series['Measurement Unit']):
+            print(f"Missing measurement unit for {icanh_site_series['ICANH_ID']}, falling back to m2") #TODO ask about this, line 27
+            icanh_site_series['Measurement Unit'] = 'square meters'
+
+        mapped_her_dimen_values = map_polymorphic_field(icanh_site_series['Dimension'], 'Dimension', 'her_loc_meas',
+                                                        'her_dimen', 'unknown')
+        her_dimen_id = mapped_her_dimen_values[0]  # TODO Find out why some dimensions cells have two values but are using m2. We're keeping only the area value
+                                                   # TODO Also find out why some elevations are thousands of meters high
+
+        her_meas_unit_id = map_icanh_value(icanh_site_series['Measurement Unit'],
+                                         'Measurement Unit',
+                                         'her_loc_meas', 'her_meas_unit')
+
+        her_meas_type_id = map_icanh_value(icanh_site_series['Measurement Type'], 'Measurement Type', 'her_loc_meas',
+                                        'her_meas_type')
+
+        her_loc_meas_id = DatabaseInterface.insert_entity('her_loc_meas', {
+            'her_dimen': her_dimen_id,
+            'her_meas_unit': her_meas_unit_id,
+            'her_meas_type': her_meas_type_id,
+            'her_meas_value': icanh_site_series['Measurement Value'],
+            'arch_ass_id': arch_ass_id
+        })
 
         return arch_ass_id
-
-    # TODO Refactor as Mapper with json file?
-    match sicg_site_series['medicao']:
-
-        case 'instrumento':
-            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Handheld GPS']
-        case 'estimada':
-            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Estimated/Paced']
-        case 'passo':
-            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Estimated/Paced']
-        case 'mapa':
-            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type']['Maps']
-        case _:
-            measurement_type = DatabaseInterface.get_concept_id_mappings()['Measurement Type'][
-                'Unknown-Recorded From Legacy Data']
-
-    for source_measurement_field in [
-        ('comprimento', 'Length', 'Meters (m)'),
-        ('largura', 'Breadth/Width', 'Meters (m)'),
-        ('area', 'Area', 'Square Meters (m2)')
-    ]:
-        try:
-            insert_measurement(
-                sicg_site_series[source_measurement_field[0]],
-                source_measurement_field[1],
-                source_measurement_field[2],
-                measurement_type)
-
-        except ValueError as ve:
-            missing_value = f"{sicg_site_series[source_measurement_field[0]]}:{source_measurement_field[1]}:{source_measurement_field[2]}"
-            MapperManager.add_missing_value(missing_value, missing_value,
-                                            f"{source_meta['name']}:{sicg_site_series['X']}:{source_measurement_field}",
-                                            'her_loc_meas.her_meas_value')
-            continue
-    '''
 
 
 def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, insert_data: bool):
@@ -437,6 +431,7 @@ def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, inse
 
         except MAPHSAParserException as mpe:
             DatabaseInterface.abort_transaction()
+            print("MAPHSAParserException occurred")
             print(mpe)
 
 

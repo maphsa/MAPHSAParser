@@ -45,6 +45,9 @@ class MapperManager:
         'site_cult_aff.cult_aff': 'Cultural Affiliation',
         'her_loc_funct.her_loc_funct': 'Heritage Location Function',
         'her_loc_funct.her_loc_fun_cert': 'Heritage Location Function Certainty',
+        'her_loc_meas.her_dimen': 'Dimension',
+        'her_loc_meas.her_meas_unit': 'Measurement Unit',
+        'her_loc_meas.her_meas_type': 'Measurement Type',
     }
 
     specialized_mapper_indexes = {
