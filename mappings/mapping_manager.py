@@ -48,6 +48,7 @@ class MapperManager:
         'her_loc_meas.her_dimen': 'Dimension',
         'her_loc_meas.her_meas_unit': 'Measurement Unit',
         'her_loc_meas.her_meas_type': 'Measurement Type',
+        'her_feature.feat_type': 'Feature Type',
     }
 
     specialized_mapper_indexes = {

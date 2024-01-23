@@ -9,8 +9,9 @@ from tqdm import tqdm
 from shapely.geometry import shape
 
 import id_cipher
+import mappings
 from database_interface import DatabaseInterface
-from exceptions import MAPHSAParserException
+from exceptions import MAPHSAParserException, MAPHSAMissingMappingException
 from mappings import MapperManager
 
 
@@ -59,10 +60,9 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
 
     parse_arch_ass(icanh_site_series, source_meta, her_maphsa_id)
 
-    # Parsing two branches simultaneously
-    '''
-    parse_built_comp_her_feature(icanh_site_series, source_meta, her_maphsa_id)
+    parse_her_feature(icanh_site_series, source_meta, her_maphsa_id)
 
+    '''
     parse_her_find(icanh_site_series, source_meta, her_maphsa_id)
 
     parse_env_assessment(icanh_site_series, source_meta, her_maphsa_id)
@@ -415,6 +415,28 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
         })
 
         return arch_ass_id
+
+
+def parse_her_feature(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int):
+    if not pd.isna(icanh_site_series['Feature Type']):
+
+        feat_type_source = icanh_site_series['Feature Type']
+        feat_count_source = icanh_site_series['Feature Count'] if not pd.isna(icanh_site_series['Feature Count']) else 1
+
+        feat_type_values = map_polymorphic_field(feat_type_source, "Feature Type", "her_feature", "feat_type")
+
+        for feat_type_value in feat_type_values:
+
+            her_feature_id = DatabaseInterface.insert_entity('her_feature', {
+                'her_maphsa_id': her_maphsa_id,
+                'feat_type': feat_type_value,
+                'feat_count': feat_count_source
+            })
+
+        return her_feature_id
+
+    else:
+        return
 
 
 def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, insert_data: bool):
