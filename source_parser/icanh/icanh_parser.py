@@ -50,8 +50,6 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
         'source_id': source_id
     })
 
-    # Create these methods for ICANH
-
     parse_her_geom(icanh_site_series, source_meta, her_maphsa_id)
 
     parse_her_loc_sum(icanh_site_series, source_meta, her_maphsa_id)
@@ -64,10 +62,7 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
 
     parse_her_find(icanh_site_series, source_meta, her_maphsa_id)
 
-    '''
     parse_env_assessment(icanh_site_series, source_meta, her_maphsa_id)
-    parse_her_cond_ass(icanh_site_series, source_meta, her_maphsa_id)
-    '''
 
 
 def map_icanh_value(source_value, target_arches_collection_name, target_table_name,
@@ -97,7 +92,8 @@ def map_polymorphic_field(source_value, target_arches_collection_name, target_ta
         source_values = polymorphic_field_to_list(source_value)
 
     mapped_values = set()
-    for source_value in source_values:
+    # Land cover had and empty value
+    for source_value in [v for v in source_values if v != '']:
         mapped_value = map_icanh_value(source_value, target_arches_collection_name, target_table_name,
                                        target_field_name)
         mapped_values.add(mapped_value)
@@ -439,11 +435,11 @@ def parse_her_feature(icanh_site_series: Series, source_meta: dict, her_maphsa_i
         return
 
 
-def parse_her_find(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
+def parse_her_find(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int):
     art_cat_values = []
-    if not pd.isna(sicg_site_series['Artefact Category']):
+    if not pd.isna(icanh_site_series['Artefact Category']):
 
-        art_cat_values = map_polymorphic_field(sicg_site_series['Artefact Category'], "Artefact Category", 'her_find', 'art_cat_concept_list_id')
+        art_cat_values = map_polymorphic_field(icanh_site_series['Artefact Category'], "Artefact Category", 'her_find', 'art_cat_concept_list_id')
 
     art_cat_concept_list_id = DatabaseInterface.create_concept_list('Artefact Category', art_cat_values)
 
@@ -453,6 +449,50 @@ def parse_her_find(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     })
 
     return her_find_id
+
+
+def parse_env_assessment(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
+    topo_type_values = lcov_type_values = bedr_geo_values = soil_class_values = l_use_type_values = []
+
+    # Topography
+    if not pd.isna(icanh_site_series['Topography']):
+        topo_type_values = map_polymorphic_field(icanh_site_series['Topography'], 'Topography', 'env_assessment', 'topo_type')
+    # Land Cover
+    if not pd.isna(icanh_site_series['Land Cover']):
+        lcov_type_values = map_polymorphic_field(icanh_site_series['Land Cover'], 'Land Cover', 'env_assessment', 'lcov_type')
+    if not pd.isna(icanh_site_series['Land Cover.1']):
+        lcov_type_values = lcov_type_values + map_polymorphic_field(icanh_site_series['Land Cover.1'], 'Land Cover', 'env_assessment', 'lcov_type')
+
+    # Bedrock Geology TODO Empty value?
+
+    # Soil Classification TODO Wrong values that do not fit our thesaurus
+
+    # Land Use
+    if not pd.isna(icanh_site_series['Land Use']):
+        lcov_type_values = map_polymorphic_field(icanh_site_series['Land Use'], 'Land Use', 'env_assessment', 'l_use_type')
+
+    env_assessment_id = DatabaseInterface.insert_entity('env_assessment', {
+        'her_maphsa_id': her_maphsa_id,
+        'topo_type': DatabaseInterface.create_concept_list('Topography', topo_type_values),
+        'lcov_type': DatabaseInterface.create_concept_list('Land Cover', lcov_type_values),
+        'bedr_geo': DatabaseInterface.create_concept_list('Bedrock Geology', bedr_geo_values),
+        'soil_class': DatabaseInterface.create_concept_list('Soil Classification', soil_class_values),
+        'l_use_type': DatabaseInterface.create_concept_list('Land Use', l_use_type_values),
+    })
+
+    # Hydrology Information
+    # Hydrology Type # TODO names are not of hydrological subjects, but indications
+    if not pd.isna(icanh_site_series['Hydrology Type']):
+        hydro_type_source_values = polymorphic_field_to_list(icanh_site_series['Hydrology Type'])
+
+        for hydro_type_source_value in hydro_type_source_values:
+
+            hydro_type_id = map_icanh_value(hydro_type_source_value, 'Hydrology Type', 'hydro_info', 'hydro_type')
+            DatabaseInterface.insert_entity('hydro_info', {
+                'env_assessment_id': env_assessment_id,
+                'hydro_name': hydro_type_source_value,
+                'hydro_type': DatabaseInterface.create_concept_list('Hydrology Type', [hydro_type_id])
+            })
 
 
 def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, insert_data: bool):

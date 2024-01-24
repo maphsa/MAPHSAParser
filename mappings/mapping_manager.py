@@ -50,6 +50,10 @@ class MapperManager:
         'her_loc_meas.her_meas_type': 'Measurement Type',
         'her_feature.feat_type': 'Feature Type',
         'her_find.art_cat_concept_list_id': 'Artefact Category',
+        'env_assessment.topo_type': 'Topography',
+        'env_assessment.lcov_type': 'Land Cover',
+        'env_assessment.l_use_type': 'Land Use',
+        'hydro_info.hydro_type': 'Hydrology Type',
     }
 
     specialized_mapper_indexes = {
