@@ -118,7 +118,7 @@ def parse_her_geom(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
     if polygon is None:
         geom_ext_cert_id = DatabaseInterface.get_concept_id_mappings()['Geometry Extent Certainty']['Negligible']
     else:
-        geom_ext_cert_id = map_icanh_value(icanh_site_series["Site Location Certainty"], 'Site Location Certainty',
+        geom_ext_cert_id = map_icanh_value(icanh_site_series["Geometry Extent Certainty"], 'Geometry Extent Certainty',
                                            'her_geom', 'loc_cert', fallback_value='Unknown')
 
     # System ref ID
