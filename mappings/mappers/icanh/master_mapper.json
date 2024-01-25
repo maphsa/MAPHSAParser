@@ -321,7 +321,8 @@
     {
         "high": "Confirmed",
         "low": "Unconfirmed",
-        "medium": "Possible"
+        "medium": "Possible",
+        "not informed": "Not Informed"
     },
     "Cultural Affiliation Final":
     {

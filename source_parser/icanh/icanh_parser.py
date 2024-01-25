@@ -287,8 +287,9 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
 
     # Cultural affiliation
 
-    confirmed_ca_certainty_id = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation Certainty'][
-        'Confirmed']
+    ca_certainty_id = map_icanh_value(icanh_site_series['Cultural Affiliation Certainty'],
+                                                'Cultural Affiliation Certainty', 'site_cult_aff', 'cult_aff_certainty',
+                                                fallback_value='Not Informed')
 
     ca_values: set = set()
 
@@ -317,7 +318,7 @@ def parse_arch_ass(icanh_site_series: Series, source_meta: dict, her_maphsa_id: 
         site_cult_aff_id = DatabaseInterface.insert_entity('site_cult_aff', {
             'arch_ass_id': arch_ass_id,
             'cult_aff': ca_id,
-            'cult_aff_certainty': confirmed_ca_certainty_id
+            'cult_aff_certainty': ca_certainty_id
 
         })
 
