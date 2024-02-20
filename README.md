@@ -37,6 +37,7 @@ MAS[MAPHSA Arches Server] <-- Site Browsing --> EU(End User)
 ```commandline
 python command.py database_interface build_database
 python command.py arches load_concepts -i ~/archesExportData/maphsa-pkg-master/reference_data/*.xml
-python command.py parse sicg -i sources/iphan_sites.csv
+python command.py parse icanh -i sources/icanh_sites_filtered.csv
+python command.py parse sicg -i sources/iphan_sites.csv -sg
 
 ```
