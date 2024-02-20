@@ -32,7 +32,7 @@ MAS[MAPHSA Arches Server] <-- Site Browsing --> EU(End User)
 
 ## Major Update History
 * 11/17/2023 - Initial commit. SICG data support is built-in.
-* 02/20/2024 - Add Colombian IPHAN data support.
+* 02/20/2024 - Add Colombian ICANH data support.
 
 ### Sample Run Commands
 
