@@ -1,5 +1,5 @@
-DB_NAME = ''
-DB_HOST = ''
+DB_NAME = 'qgis_dev'
+DB_HOST = 'localhost'
 DB_PORT = 5432
 DB_USERNAME = ''
 DB_PASSWORD = ''

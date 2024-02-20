@@ -2,6 +2,8 @@ import argparse
 
 from database_interface import DatabaseInterface
 from source_parser import ExistingSources, source_meta, post_process_commands
+from source_parser.sicg import sicg_parser
+from source_parser.icanh import icanh_parser
 
 
 def validate_arguments(args: argparse.Namespace):
@@ -30,6 +32,6 @@ def post_process():
 def process_subcommand(args: argparse.Namespace):
 
     validate_arguments(args)
-    parser = source_meta[args.subcommand[1]]['parser']
+    parser = eval(source_meta[args.subcommand[1]]['parser'])
     parser.process_input(args.input, source_meta[args.subcommand[1]], args.supp, not args.fake)
     post_process()

@@ -44,7 +44,7 @@ def set_column_to_float(dataframe: pandas.DataFrame, column_name: str):
 
 
 def clean_input_dataframe(input_dataframe: pd.DataFrame) -> pd.DataFrame:
-    input_dataframe['X'] = input_dataframe['X'] + 2
+    input_dataframe['X'] = input_dataframe['X'] + 2 #TODO This is sloppy, column value gets displaced over time
 
     input_dataframe = input_dataframe.replace('', np.NAN)
     input_dataframe = input_dataframe.replace('NA', np.NAN)
@@ -131,8 +131,8 @@ def process_geom(_lat, _long, _polygon):
 def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
     geom_ext_cert_definite_concept_id = concept_id_mappings['Geometry Extent Certainty']['Negligible']
-    loc_cert_definite_concept_id = concept_id_mappings['Location Certainty']['Definite']
-    loc_cert_negligible_concept_id = concept_id_mappings['Location Certainty']['Negligible']
+    loc_cert_definite_concept_id = concept_id_mappings['Site Location Certainty']['Definite']
+    loc_cert_negligible_concept_id = concept_id_mappings['Site Location Certainty']['Negligible']
     sys_ref_id = concept_id_mappings['Spatial Coordinates Reference System Datum']['WGS84']
 
     grid_id = DatabaseInterface.get_placeholder_entity_id('grid')
@@ -159,9 +159,9 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         'long': 0 if long is None else long,
         'her_maphsa_id': her_maphsa_id,
         'grid_id': grid_id,
-        'wkb_geometry': "NULL"
+        "her_polygon": None,
+        'wkb_geometry': None
     })
-
 
     # TODO Parse the polygons?
     '''
@@ -336,7 +336,7 @@ def parse_her_admin_div(sicg_site_series: Series, source_meta: dict, her_maphsa_
     municipality_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
                                                                           'Municipality')
     state_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
-                                                                   'Municipality')
+                                                                   'State')
 
     DatabaseInterface.insert_entity('her_admin_div', {
         'admin_div_name': 'Brazil',
@@ -370,7 +370,7 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     pra_ids = []
 
     if not pd.isna(sicg_site_series['atividadesDesenvolvidasLocal1']):
-        pra_mapper = mappings.MapperManager.get_mapper('arch_ass', 'prev_res_act')
+        pra_mapper = mappings.MapperManager.get_mapper('sicg', 'arch_ass', 'prev_res_act')
         prev_res_act_mapping_ids = DatabaseInterface.get_concept_id_mappings()['Previous Research Activities']
         previous_research_activities = \
             [pra.strip() for pra in pra_mapper.split_source_value(sicg_site_series['atividadesDesenvolvidasLocal1'])]
@@ -386,31 +386,46 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     shape_mapping_ids = DatabaseInterface.get_concept_id_mappings()['Shape']
     her_shape_id = DatabaseInterface.get_concept_id_mapping('Shape', 'Not Informed')
     if not pd.isna(sicg_site_series['forma']):
-        shape_mapper = mappings.MapperManager.get_mapper('arch_ass', 'her_shape')
+        shape_mapper = mappings.MapperManager.get_mapper('sicg', 'arch_ass', 'her_shape')
         her_shape_name = shape_mapper.get_field_mapping(sicg_site_series['forma'])
         her_shape_id = shape_mapping_ids[her_shape_name]
 
+    # Overall Morphology
+    her_morph_id = DatabaseInterface.get_concept_id_mappings()['Overall Morphology']['Unknown']
+
+    # Heritage Location Orientation
+    her_loc_orient_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Orientation']['Not Informed']
+
     # Overall Certainty
     overall_arch_cert_id = DatabaseInterface.get_concept_id_mappings()['Overall Archaeological Certainty']['Definite']
+
     arch_ass_id = DatabaseInterface.insert_entity('arch_ass', {
         'her_maphsa_id': her_maphsa_id,
         'prev_res_act': prev_res_act_id,
-        'her_morph': 1,  # TODO
+        'her_morph': her_morph_id,
         'her_shape': her_shape_id,
-        'her_loc_orient': 1,  # TODO
+        'her_loc_orient': her_loc_orient_id,
         'o_arch_cert': overall_arch_cert_id
     })
 
     # Cultural affiliation
 
-    unconfirmed_ca_certainty_id = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation Certainty'][
+    confirmed_ca_certainty_id = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation Certainty'][
         'Confirmed']
     ca_mapping_ids = DatabaseInterface.get_concept_id_mappings()['Cultural Affiliation']
-    ca_mapper = mappings.MapperManager.get_mapper('site_cult_aff', 'cult_aff')
+    ca_mapper = mappings.MapperManager.get_mapper('sicg', 'site_cult_aff', 'cult_aff')
     ca_names: set = set()
 
     def is_valid_ca_value(source_value: str) -> bool:
         return not pd.isna(source_value) and source_value not in ('.', '?', '-')
+
+    def find_word_in_text(search_text, target_word):
+        try:
+            search_function = re.compile(r'\b({0})\b'.format(target_word), flags=re.IGNORECASE).findall
+            return search_function(search_text)
+        except Exception as e:
+            print("find_word_in_text exception")
+            print(e)
 
     if is_valid_ca_value(sicg_site_series['tradicoesArtefatosCeramicos']):
         try:
@@ -439,6 +454,12 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
                                             'site_cult_aff.cult_aff')
             ca_names.add('Other')
 
+    # Check the description field sicg_site_series['Síntese.histórica']
+    if str(sicg_site_series['X']) in ca_mapper.description_ca_values.keys():
+        source_value, target_value = ca_mapper.description_ca_values[str(sicg_site_series['X'])].split('_')
+        if source_value in sicg_site_series['Síntese.histórica'] and target_value not in ca_names:
+            ca_names.add(target_value)
+
     if len(ca_names) == 0:
         ca_names.add('Not Informed')
 
@@ -452,7 +473,7 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         site_cult_aff_id = DatabaseInterface.insert_entity('site_cult_aff', {
             'arch_ass_id': arch_ass_id,
             'cult_aff': ca_id,
-            'cult_aff_certainty': unconfirmed_ca_certainty_id
+            'cult_aff_certainty': confirmed_ca_certainty_id
 
         })
 
@@ -462,7 +483,7 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
 
     dates = []
     if len(dated_ca_names) > 0:
-        date_mapper = mappings.MapperManager.get_mapper('sites_timespace', 'from_to_date')
+        date_mapper = mappings.MapperManager.get_mapper('sicg', 'sites_timespace', 'from_to_date')
         for ca_name in dated_ca_names:
             try:
                 date_string = date_mapper.get_field_mapping(ca_name)
@@ -492,7 +513,7 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
 
     if not pd.isna(sicg_site_series['tipo']):
         hlfc_id = DatabaseInterface.get_concept_id_mappings()['Heritage Location Function Certainty']['Definite']
-        function_mapper = mappings.MapperManager.get_mapper('her_loc_funct', 'her_loc_funct')
+        function_mapper = mappings.MapperManager.get_mapper('sicg', 'her_loc_funct', 'her_loc_funct')
         function_ids = DatabaseInterface.get_concept_id_mappings()['Heritage Location Function']
 
         her_loc_funct_name = function_mapper.get_field_mapping(sicg_site_series['tipo'])
@@ -592,7 +613,7 @@ def parse_built_comp_her_feature(sicg_site_series: Series, source_meta: dict, he
 def parse_built_comp(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
     estruturas_value = sicg_site_series['estruturas']
 
-    comp_type_concept_names = mappings.MapperManager.get_mapper('built_comp', 'comp_type')
+    comp_type_concept_names = mappings.MapperManager.get_mapper('sicg', 'built_comp', 'comp_type')
     comp_type_concept_ids = DatabaseInterface.get_concept_id_mappings()['Component Type']
 
     comp_type_concept_name = comp_type_concept_names.get_field_mapping(estruturas_value)
@@ -612,7 +633,7 @@ def parse_built_comp(sicg_site_series: Series, source_meta: dict, her_maphsa_id:
 def parse_her_feature(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
     estruturas_value = sicg_site_series['estruturas']
 
-    feat_type_concept_names = mappings.MapperManager.get_mapper('her_feature', 'feat_type')
+    feat_type_concept_names = mappings.MapperManager.get_mapper('sicg', 'her_feature', 'feat_type')
     feat_type_concept_ids = DatabaseInterface.get_concept_id_mappings()['Feature Type']
 
     feat_type_concept_name = feat_type_concept_names.get_field_mapping(estruturas_value)
@@ -635,7 +656,7 @@ def parse_her_find(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
 
         artefatos_value = sicg_site_series['artefatos']
 
-        art_cat_concept_names = mappings.MapperManager.get_mapper('her_find', 'art_cat_concept_list_id')
+        art_cat_concept_names = mappings.MapperManager.get_mapper('sicg', 'her_find', 'art_cat_concept_list_id')
         art_cat_concept_ids = DatabaseInterface.get_concept_id_mappings()['Artefact Category']
 
         try:
@@ -664,7 +685,7 @@ def parse_her_find(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
 def parse_env_assessment_param(source_series, source_field_name, target_collection_name, fallback_concept_name,
                                source_meta_name, target_table, target_field, concept_list=False):
     source_value = source_series[source_field_name] if not pd.isna(source_series[source_field_name]) else None
-    concept_names = mappings.MapperManager.get_mapper(target_table, target_field)
+    concept_names = mappings.MapperManager.get_mapper('sicg', target_table, target_field)
     concept_ids = DatabaseInterface.get_concept_id_mappings()[target_collection_name]
     fallback_concept_id = DatabaseInterface.get_concept_id_mappings()[target_collection_name][fallback_concept_name]
 
@@ -763,7 +784,7 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
 
     concept_id_mappings = DatabaseInterface.get_concept_id_mappings()
 
-    recc_type_mapper = mappings.MapperManager.get_mapper('her_cond_ass', 'recc_type')
+    recc_type_mapper = mappings.MapperManager.get_mapper('sicg', 'her_cond_ass', 'recc_type')
     recc_type_source_ids = concept_id_mappings['Recommendation Type']
 
     missing_recc_type_id = recc_type_source_ids['Not Defined']
@@ -793,7 +814,7 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
 
     # Disturbance Event
 
-    dist_cause_mapper = mappings.MapperManager.get_mapper('disturbance_event', 'dist_cause')
+    dist_cause_mapper = mappings.MapperManager.get_mapper('sicg', 'disturbance_event', 'dist_cause')
     dist_cause_source_ids = concept_id_mappings['Disturbance Cause']
 
     try:
@@ -821,7 +842,7 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
 
     # Overall Damage Extent Estado.de.Conservação, Estado.de.Preservação, Entorno.do.bem
 
-    over_dam_ext_mapper = mappings.MapperManager.get_mapper('disturbance_event', 'over_dam_ext')
+    over_dam_ext_mapper = mappings.MapperManager.get_mapper('sicg', 'disturbance_event', 'over_dam_ext')
     over_dam_ext_ids = concept_id_mappings['Overall Damage Extent']
 
     estado_de_conservacao = sicg_site_series['Estado.de.Conservação'] if not pd.isna(sicg_site_series['Estado.de.Conservação']) else None

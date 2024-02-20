@@ -1,10 +1,11 @@
+import json
 import re
 from unidecode import unidecode
 
 from exceptions import MAPHSAMissingMappingException
 
 
-class Mapper:
+class SICGMapper:
     source_name: str
     field_mappings: dict = None
 
@@ -39,13 +40,13 @@ class Mapper:
         raise NotImplemented("Abstract method")
 
 
-class MultiValueMapper(Mapper):
+class SICGMultiValueMapper(SICGMapper):
 
     def get_field_mappings(self, source_value: str):
         raise NotImplemented("Abstract method")
 
 
-class PreviousResearchActivitiesMapper(Mapper):
+class SICGPreviousResearchActivitiesMapper(SICGMapper):
 
     @classmethod
     def split_source_value(cls, source_value: str) -> list:
@@ -61,7 +62,17 @@ class PreviousResearchActivitiesMapper(Mapper):
         return source_value_items
 
 
-class CulturalAffiliationMapper(MultiValueMapper):
+class SICGCulturalAffiliationMapper(SICGMultiValueMapper):
+
+    description_ca_values = None
+
+    def __init__(self, *args, **kwargs):
+        if self.__class__.description_ca_values is None:
+            with open('mappings/auxiliary/description_ca_values.json', 'r') as aux_ca_infile:
+                self.__class__.description_ca_values = json.load(aux_ca_infile)
+
+        super().__init__(*args, **kwargs)
+
     def get_field_mappings(self, source_value: str) -> set:
 
         mapped_values: set = set()
@@ -81,7 +92,7 @@ class CulturalAffiliationMapper(MultiValueMapper):
 
 
 # TODO maybe generalize regex usage
-class ComponentTypeMapper(Mapper):
+class SICGComponentTypeMapper(SICGMapper):
 
     def filter_source_value(self, source_value: str) -> str:
 
@@ -91,7 +102,7 @@ class ComponentTypeMapper(Mapper):
         return _source_value
 
 
-class FeatureTypeMapper(Mapper):
+class SICGFeatureTypeMapper(SICGMapper):
 
     def filter_source_value(self, source_value: str) -> str:
 
@@ -101,7 +112,7 @@ class FeatureTypeMapper(Mapper):
         return _source_value
 
 
-class ArtefactCategoryMapper(Mapper):
+class SICGArtefactCategoryMapper(SICGMapper):
 
     def filter_source_value(self, source_value: str) -> str:
 
@@ -111,7 +122,7 @@ class ArtefactCategoryMapper(Mapper):
         return _source_value
 
 
-class EnvironmentAssessmentParamMapper(Mapper):
+class SICGEnvironmentAssessmentParamMapper(SICGMapper):
 
     @staticmethod
     def filter_mapping_key(_key: str):
@@ -125,7 +136,7 @@ class EnvironmentAssessmentParamMapper(Mapper):
         self.field_mappings = {self.filter_mapping_key(k): v.title() for k, v in _mappings.items()}
 
 
-class HydrologyTypeMapper(EnvironmentAssessmentParamMapper):
+class SICGHydrologyTypeMapper(SICGEnvironmentAssessmentParamMapper):
 
     substring_mappings = {
         'baia': 'Bay',

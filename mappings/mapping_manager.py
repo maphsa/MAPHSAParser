@@ -1,12 +1,15 @@
 
 import json
 
-from mappings.mappers.mappers import Mapper, PreviousResearchActivitiesMapper, CulturalAffiliationMapper, \
-    ComponentTypeMapper, FeatureTypeMapper, ArtefactCategoryMapper, EnvironmentAssessmentParamMapper, \
-    HydrologyTypeMapper
+from mappings.mappers.icanh.icanh_mappers import ICANHMapper
+from mappings.mappers.sicg.sicg_mappers import SICGMapper, SICGPreviousResearchActivitiesMapper, SICGCulturalAffiliationMapper, \
+    SICGComponentTypeMapper, SICGFeatureTypeMapper, SICGArtefactCategoryMapper, SICGEnvironmentAssessmentParamMapper, \
+    SICGHydrologyTypeMapper
 from exceptions import MAPHSAParserException
 
 import pandas as pd
+
+from source_parser import ExistingSources
 
 
 class MapperManager:
@@ -14,37 +17,83 @@ class MapperManager:
     active_mappers = {}
     missing_values: pd.DataFrame = pd.DataFrame(columns=["value", "filtered_value", "source", "target", "count"])
 
-    specialized_mappers = {
-        'arch_ass.prev_res_act': PreviousResearchActivitiesMapper,
-        'site_cult_aff.cult_aff': CulturalAffiliationMapper,
-        'built_comp.comp_type': ComponentTypeMapper,
-        'her_feature.feat_type': FeatureTypeMapper,
-        'her_find.art_cat_concept_list_id': ArtefactCategoryMapper,
-        'env_assessment.topo_type': EnvironmentAssessmentParamMapper,
-        'env_assessment.lcov_type': EnvironmentAssessmentParamMapper,
-        'env_assessment.soil_class': EnvironmentAssessmentParamMapper,
-        'env_assessment.l_use_type': EnvironmentAssessmentParamMapper,
-        'hydro_info.hydro_type': HydrologyTypeMapper,
+    default_mappers = {
+        ExistingSources.sicg.value: SICGMapper,
+        ExistingSources.icanh.value: ICANHMapper,
+    }
+
+    sicg_specialized_mappers = {
+        'arch_ass.prev_res_act': SICGPreviousResearchActivitiesMapper,
+        'site_cult_aff.cult_aff': SICGCulturalAffiliationMapper,
+        'built_comp.comp_type': SICGComponentTypeMapper,
+        'her_feature.feat_type': SICGFeatureTypeMapper,
+        'her_find.art_cat_concept_list_id': SICGArtefactCategoryMapper,
+        'env_assessment.topo_type': SICGEnvironmentAssessmentParamMapper,
+        'env_assessment.lcov_type': SICGEnvironmentAssessmentParamMapper,
+        'env_assessment.soil_class': SICGEnvironmentAssessmentParamMapper,
+        'env_assessment.l_use_type': SICGEnvironmentAssessmentParamMapper,
+        'hydro_info.hydro_type': SICGHydrologyTypeMapper,
+    }
+
+    icanh_specialized_mapper_source = {
+        'her_geom.loc_cert': 'Site Location Certainty',
+        'her_loc_name.her_loc_name_type': 'Heritage Location Name Type',
+        'her_loc_type.her_loc_type': 'Heritage Location Type',
+        'her_admin_div.admin_type': 'Administrative Division Type',
+        'arch_ass.her_morph': 'Overall Morphology',
+        'arch_ass.her_shape': 'Shape',
+        'site_cult_aff.cult_aff': 'Cultural Affiliation',
+        'site_cult_aff.cult_aff_certainty': 'Cultural Affiliation Certainty',
+        'her_loc_funct.her_loc_funct': 'Heritage Location Function',
+        'her_loc_funct.her_loc_fun_cert': 'Heritage Location Function Certainty',
+        'her_loc_meas.her_dimen': 'Dimension',
+        'her_loc_meas.her_meas_unit': 'Measurement Unit',
+        'her_loc_meas.her_meas_type': 'Measurement Type',
+        'her_feature.feat_type': 'Feature Type',
+        'her_find.art_cat_concept_list_id': 'Artefact Category',
+        'env_assessment.topo_type': 'Topography',
+        'env_assessment.lcov_type': 'Land Cover',
+        'env_assessment.l_use_type': 'Land Use',
+        'hydro_info.hydro_type': 'Hydrology Type',
+    }
+
+    specialized_mapper_indexes = {
+        ExistingSources.sicg.value: sicg_specialized_mappers,
+
     }
 
     @classmethod
-    def get_mapper(cls, table_name: str, field_name: str):
+    def get_mapper(cls, source_name: str, table_name: str, field_name: str):
 
         try:
             mapper_key = f"{table_name}.{field_name}"
 
-            mapper_class = cls.specialized_mappers[mapper_key] if mapper_key in cls.specialized_mappers.keys()\
-                else Mapper
-
+            # If the mapper has not been loaded, load it
             if mapper_key not in cls.active_mappers.keys():
-                mapping_file_url = f"mappings/mappers/{table_name}.{field_name}.json"
-                mappings = json.load(open(mapping_file_url, 'r'))
+
+                if source_name == ExistingSources.icanh.value:
+                    mapper_class = ICANHMapper
+                else:
+                    specialized_mapper_index = cls.specialized_mapper_indexes[source_name]
+                    mapper_class = specialized_mapper_index[mapper_key] \
+                        if mapper_key in specialized_mapper_index.keys() else SICGMapper
+
+                if source_name == ExistingSources.icanh.value:
+                    mapping_file_url = f"mappings/mappers/{source_name}/master_mapper.json"
+                    mapping_subindex = cls.icanh_specialized_mapper_source[f"{table_name}.{field_name}"]
+                    master_mappings = json.load(open(mapping_file_url, 'r'))
+                    mappings = master_mappings[mapping_subindex]
+
+                else:
+                    mapping_file_url = f"mappings/mappers/{source_name}/{table_name}.{field_name}.json"
+                    mappings = json.load(open(mapping_file_url, 'r'))
+
                 cls.active_mappers[mapper_key] = mapper_class(mappings, f"{table_name}.{field_name}")
 
             mapper = cls.active_mappers[mapper_key]
 
         except Exception:
-            raise MAPHSAParserException(f"Unable to get mapper file for {table_name}.{field_name}")
+            raise MAPHSAParserException(f"Unable to get mapper file for {source_name} {table_name}.{field_name}")
 
         return mapper
 
