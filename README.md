@@ -28,7 +28,7 @@ MAS[MAPHSA Arches Server] <-- Site Browsing --> EU(End User)
 
 ## Supported Source Heritage Data Sources
 * Brazilian SICG data.
-* Colombian IPHAN data.
+* Colombian ICANH data.
 
 ## Major Update History
 * 11/17/2023 - Initial commit. SICG data support is built-in.
