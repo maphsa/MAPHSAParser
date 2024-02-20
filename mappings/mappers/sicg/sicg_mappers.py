@@ -1,3 +1,4 @@
+import json
 import re
 from unidecode import unidecode
 
@@ -62,6 +63,16 @@ class SICGPreviousResearchActivitiesMapper(SICGMapper):
 
 
 class SICGCulturalAffiliationMapper(SICGMultiValueMapper):
+
+    description_ca_values = None
+
+    def __init__(self, *args, **kwargs):
+        if self.__class__.description_ca_values is None:
+            with open('mappings/auxiliary/description_ca_values.json', 'r') as aux_ca_infile:
+                self.__class__.description_ca_values = json.load(aux_ca_infile)
+
+        super().__init__(*args, **kwargs)
+
     def get_field_mappings(self, source_value: str) -> set:
 
         mapped_values: set = set()

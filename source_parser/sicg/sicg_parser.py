@@ -163,7 +163,6 @@ def parse_her_geom(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
         'wkb_geometry': None
     })
 
-
     # TODO Parse the polygons?
     '''
     if len(polygon) > 3:
@@ -420,6 +419,14 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
     def is_valid_ca_value(source_value: str) -> bool:
         return not pd.isna(source_value) and source_value not in ('.', '?', '-')
 
+    def find_word_in_text(search_text, target_word):
+        try:
+            search_function = re.compile(r'\b({0})\b'.format(target_word), flags=re.IGNORECASE).findall
+            return search_function(search_text)
+        except Exception as e:
+            print("find_word_in_text exception")
+            print(e)
+
     if is_valid_ca_value(sicg_site_series['tradicoesArtefatosCeramicos']):
         try:
             ca_names = ca_names.union(ca_mapper.get_field_mappings(sicg_site_series['tradicoesArtefatosCeramicos']))
@@ -446,6 +453,12 @@ def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: i
                                             f"{source_meta['name']}:{sicg_site_series['X']}:tradicoesArtefatosLiticos",
                                             'site_cult_aff.cult_aff')
             ca_names.add('Other')
+
+    # Check the description field sicg_site_series['Síntese.histórica']
+    if str(sicg_site_series['X']) in ca_mapper.description_ca_values.keys():
+        source_value, target_value = ca_mapper.description_ca_values[str(sicg_site_series['X'])].split('_')
+        if source_value in sicg_site_series['Síntese.histórica'] and target_value not in ca_names:
+            ca_names.add(target_value)
 
     if len(ca_names) == 0:
         ca_names.add('Not Informed')
