@@ -1,5 +1,5 @@
 -- Created by Vertabelo (http://vertabelo.com)
--- Last modification date: 2023-12-16 10:31:54.758
+-- Last modification date: 2024-02-29 14:45:41.531
 
 -- tables
 -- Table: arch_ass
@@ -219,6 +219,7 @@ CREATE TABLE her_maphsa (
     id_maphsa varchar(100)  NOT NULL,
     comment varchar(250)  NULL,
     her_source_id int  NOT NULL,
+    information_resource_id int  NOT NULL,
     CONSTRAINT her_maphsa_pk PRIMARY KEY (id)
 );
 
@@ -239,6 +240,40 @@ CREATE TABLE hydro_info (
     CONSTRAINT hydro_info_pk PRIMARY KEY (id)
 );
 
+-- Table: information_resource
+CREATE TABLE information_resource (
+   id serial  NOT NULL,
+   id_maphsa varchar(128)  NOT NULL,
+   url varchar(128)  NULL,
+   bib_title varchar(128)  NULL,
+   bib_pub_date date  NULL,
+   bib_edition varchar(128)  NULL,
+   bib_issue varchar(128)  NULL,
+   bib_journal varchar(128)  NULL,
+   bib_pub_place varchar(128)  NULL,
+   bib_publisher varchar(128)  NULL,
+   bib_pages varchar(128)  NULL,
+   description varchar(256)  NULL,
+   inf_res_type int  NOT NULL,
+   CONSTRAINT information_resource_pk PRIMARY KEY (id)
+);
+
+-- Table: information_resource_author
+CREATE TABLE information_resource_author (
+    id int  NOT NULL,
+    author_appellation varchar(128)  NOT NULL,
+    information_resource_id int  NOT NULL,
+    CONSTRAINT information_resource_author_pk PRIMARY KEY (id)
+);
+
+-- Table: information_resource_editor
+CREATE TABLE information_resource_editor (
+    id int  NOT NULL,
+    editor_apellation varchar(128)  NOT NULL,
+    information_resource_id int  NOT NULL,
+    CONSTRAINT information_resource_editor_pk PRIMARY KEY (id)
+);
+
 -- Table: land_own
 CREATE TABLE land_own (
     id serial  NOT NULL,
@@ -248,6 +283,27 @@ CREATE TABLE land_own (
     prot_to varchar(100)  NOT NULL,
     env_assessment_id int  NOT NULL,
     CONSTRAINT land_own_pk PRIMARY KEY (id)
+);
+
+-- Table: pers_org_res_adm_div
+CREATE TABLE pers_org_res_adm_div (
+    pers_org_res_id int  NOT NULL,
+    her_admin_div_id int  NOT NULL,
+    CONSTRAINT pers_org_res_adm_div_pk PRIMARY KEY (her_admin_div_id,pers_org_res_id)
+);
+
+-- Table: person_organization_resource
+CREATE TABLE person_organization_resource (
+    id int  NOT NULL,
+    ip_maphsa varchar(128)  NOT NULL,
+    name varchar(128)  NOT NULL,
+    place_address varchar(256)  NOT NULL,
+    description varchar(256)  NOT NULL,
+    person_organization_category int  NOT NULL,
+    actor_role_type int  NOT NULL,
+    actor_role_type_from date  NOT NULL,
+    actor_role_type_to date  NOT NULL,
+    CONSTRAINT person_organization_resource_pk PRIMARY KEY (id)
 );
 
 -- Table: risk_assessment
@@ -279,6 +335,14 @@ CREATE TABLE sites_timespace (
 );
 
 -- foreign keys
+-- Reference: actor_role_type (table: person_organization_resource)
+ALTER TABLE person_organization_resource ADD CONSTRAINT actor_role_type
+    FOREIGN KEY (actor_role_type)
+    REFERENCES concept_list (concept_list_id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
 -- Reference: aher_loc_type_concept_table (table: her_loc_type)
 ALTER TABLE her_loc_type ADD CONSTRAINT aher_loc_type_concept_table
     FOREIGN KEY (her_loc_type)
@@ -663,6 +727,14 @@ ALTER TABLE her_maphsa ADD CONSTRAINT her_maphsa_her_source
     INITIALLY IMMEDIATE
 ;
 
+-- Reference: her_maphsa_information_resource (table: her_maphsa)
+ALTER TABLE her_maphsa ADD CONSTRAINT her_maphsa_information_resource
+    FOREIGN KEY (information_resource_id)
+    REFERENCES information_resource (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
 -- Reference: her_source_data_origin (table: her_source)
 ALTER TABLE her_source ADD CONSTRAINT her_source_data_origin
     FOREIGN KEY (data_origin_name)
@@ -683,6 +755,30 @@ ALTER TABLE hydro_info ADD CONSTRAINT hydro_info
 ALTER TABLE hydro_info ADD CONSTRAINT hydro_type_concept_list
     FOREIGN KEY (hydro_type)
     REFERENCES concept_list (concept_list_id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: information_resource_author_information_resource (table: information_resource_author)
+ALTER TABLE information_resource_author ADD CONSTRAINT information_resource_author_information_resource
+    FOREIGN KEY (information_resource_id)
+    REFERENCES information_resource (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: information_resource_concept_table (table: information_resource)
+ALTER TABLE information_resource ADD CONSTRAINT information_resource_concept_table
+    FOREIGN KEY (inf_res_type)
+    REFERENCES concept_table (concept_id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: information_resource_editor_information_resource (table: information_resource_editor)
+ALTER TABLE information_resource_editor ADD CONSTRAINT information_resource_editor_information_resource
+    FOREIGN KEY (information_resource_id)
+    REFERENCES information_resource (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
@@ -754,6 +850,30 @@ ALTER TABLE arch_ass ADD CONSTRAINT morphology_concept_table
 -- Reference: period_cert_concept_table (table: sites_timespace)
 ALTER TABLE sites_timespace ADD CONSTRAINT period_cert_concept_table
     FOREIGN KEY (period_cert)
+    REFERENCES concept_table (concept_id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: pers_org_res_adm_div_pers_org_res (table: pers_org_res_adm_div)
+ALTER TABLE pers_org_res_adm_div ADD CONSTRAINT pers_org_res_adm_div_pers_org_res
+    FOREIGN KEY (pers_org_res_id)
+    REFERENCES person_organization_resource (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: person_organization_resource_adm_div_her_admin_div (table: pers_org_res_adm_div)
+ALTER TABLE pers_org_res_adm_div ADD CONSTRAINT person_organization_resource_adm_div_her_admin_div
+    FOREIGN KEY (her_admin_div_id)
+    REFERENCES her_admin_div (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: person_organization_resource_concept_table (table: person_organization_resource)
+ALTER TABLE person_organization_resource ADD CONSTRAINT person_organization_resource_concept_table
+    FOREIGN KEY (person_organization_category)
     REFERENCES concept_table (concept_id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE

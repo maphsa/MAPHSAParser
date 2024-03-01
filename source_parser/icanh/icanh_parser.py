@@ -38,6 +38,7 @@ def clean_input_dataframe(input_dataframe: pd.DataFrame) -> pd.DataFrame:
 def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
     icanh_id = icanh_site_series[source_meta['id_field']]
     uuid = id_cipher.generate_entity_uuid5(icanh_site_series, source_meta)
+    information_resource_id = DatabaseInterface.get_information_resource_id(source_meta)
 
     source_id = DatabaseInterface.insert_entity('her_source', {
         'data_origin_name': source_meta['name'],
@@ -47,7 +48,8 @@ def parse_icanh_her_maphsa(icanh_site_series: Series, source_meta: dict):
     her_maphsa_id = DatabaseInterface.insert_entity('her_maphsa', {
         'uuid': uuid,
         'description': f"Imported ICANH data.",
-        'source_id': source_id
+        'source_id': source_id,
+        'information_resource_id': information_resource_id
     })
 
     parse_her_geom(icanh_site_series, source_meta, her_maphsa_id)
@@ -181,6 +183,14 @@ def parse_her_loc_name(icanh_site_series: Series, source_meta: dict, her_loc_sum
         'her_loc_name': her_loc_name,
         'her_loc_sum_id': her_loc_sum_id,
         'her_loc_name_type': her_loc_name_type
+    })
+
+    icanh_id = icanh_site_series['ICANH_ID']
+    icanh_concept_id = DatabaseInterface.get_concept_id_mapping('Heritage Location Name Type', 'ICANH ID')
+    DatabaseInterface.insert_entity(target_table='her_loc_name', target_data={
+        'her_loc_name': icanh_id,
+        'her_loc_sum_id': her_loc_sum_id,
+        'her_loc_name_type': icanh_concept_id
     })
 
     return
@@ -515,11 +525,12 @@ def parse_input_dataframe(input_dataframe: pd.DataFrame, source_meta: dict, inse
 
 
 def process_input(input_files, source_meta: dict, load_supp_geodata: bool, insert_data: bool):
-    data_frame_batch = {in_file.stem: create_input_dataframes(in_file) for in_file in input_files}
-
-    if not DatabaseInterface.verify_origin(source_meta):
-        DatabaseInterface.add_origin(source_meta)
-
+    data_frame_batch = {in_file.name: create_input_dataframes(in_file) for in_file in input_files}
     for (input_resource, input_data) in data_frame_batch.items():
+        source_meta['input_url'] = input_resource
+
+        if not DatabaseInterface.verify_origin(source_meta):
+            DatabaseInterface.add_origin(source_meta)
+
         input_data = clean_input_dataframe(input_data)
         parse_input_dataframe(input_data, source_meta, insert_data)

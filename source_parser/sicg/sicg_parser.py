@@ -88,6 +88,8 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
     uuid = id_cipher.generate_entity_uuid5(sicg_site_series,
                                            source_parser.source_meta[source_parser.ExistingSources.sicg.value])
 
+    information_resource_id = DatabaseInterface.get_information_resource_id(source_meta)
+
     source_id = DatabaseInterface.insert_entity('her_source', {
         'data_origin_name': source_meta['name'],
         'location': f"Line {sicg_site_series['X']}"
@@ -96,7 +98,8 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
     her_maphsa_id = DatabaseInterface.insert_entity('her_maphsa', {
         'uuid': uuid,
         'description': f"Legacy SICG data.",
-        'source_id': source_id
+        'source_id': source_id,
+        'information_resource_id': information_resource_id
     })
 
     parse_her_geom(sicg_site_series, source_meta, her_maphsa_id)
@@ -902,15 +905,16 @@ def load_supplementary_geodata(input_file: pathlib.Path, source_meta: dict, inpu
 
 
 def process_input(input_files, source_meta: dict, load_supp_geodata: bool, insert_data: bool):
-    data_frame_batch = {in_file.stem: create_input_dataframes(in_file) for in_file in input_files}
+    data_frame_batch = {in_file.name: create_input_dataframes(in_file) for in_file in input_files}
 
     if load_supp_geodata:
-        data_frame_batch = {in_file.stem: load_supplementary_geodata(in_file, source_meta, data_frame_batch[in_file.stem]) for in_file in input_files}
-
-    if not verify_data_origin(source_meta):
-        add_data_origin(source_meta)
+        data_frame_batch = {in_file.name: load_supplementary_geodata(in_file, source_meta, data_frame_batch[in_file.name]) for in_file in input_files}
 
     for (input_resource, input_data) in data_frame_batch.items():
+        source_meta['input_url'] = input_resource
+        if not verify_data_origin(source_meta):
+            add_data_origin(source_meta)
+
         input_data = clean_input_dataframe(input_data)
         parse_input_dataframe(input_data, source_meta, insert_data)
 

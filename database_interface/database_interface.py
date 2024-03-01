@@ -242,7 +242,25 @@ class DatabaseInterface:
         return entity_id
 
     @classmethod
+    def get_information_resource_id(cls, source_meta):
+
+        select_information_resource_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/select_information_resource.j2",
+                                                  'r').read()
+        select_information_resource_template = Template(select_information_resource_string)
+        select_query = select_information_resource_template.render({'domain': str(source_meta['namespace'])})
+
+        cursor = cls.get_connection_cursor()
+        cursor.execute(select_query)
+        result = cursor.fetchall()
+
+        if len(result) == 1:
+            return result[0][0]
+        else:
+            return None
+
+    @classmethod
     def verify_origin(cls, source_meta: dict) -> bool:
+        # TODO This is old logic, should be deprecated
         select_data_origins_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/select_data_origins.j2", 'r').read()
         select_data_origins_template = Template(select_data_origins_string)
         select_query = select_data_origins_template.render({'name_string': source_meta['name']})
@@ -250,12 +268,26 @@ class DatabaseInterface:
         cursor = cls.get_connection_cursor()
         cursor.execute(select_query)
         result = cursor.fetchall()
-        return len(result) > 0
+
+        if len(result) == 0:
+            return False
+
+        return DatabaseInterface.get_information_resource_id(source_meta) is not None
+
+    @classmethod
+    def get_db_origin_id(cls):
+
+        select_query = "SELECT concept_id FROM concept_table ct WHERE ct.concept_thesaurus_id = (SELECT cth.id FROM concept_thesaurus cth WHERE cth.name LIKE 'Information Resource Type') AND ct.concept_string LIKE 'Database';"
+
+        cursor = cls.get_connection_cursor()
+        cursor.execute(select_query)
+        return cursor.fetchall()[0][0]
 
     @classmethod
     def add_origin(cls, source_meta: dict):
-        select_data_origins_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_data_origin.j2", 'r').read()
-        select_data_origins_template = Template(select_data_origins_string)
+
+        insert_data_origins_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_data_origin.j2", 'r').read()
+        insert_data_origins_template = Template(insert_data_origins_string)
 
         # Using IVI's soulution from https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
         class SourceMetaEncoder(json.JSONEncoder):
@@ -266,7 +298,7 @@ class DatabaseInterface:
                     return re.search("module '([A-z_.]*)'", obj.__str__()).group(1)
                 return json.JSONEncoder.default(self, obj)
 
-        select_query = select_data_origins_template.render(
+        insert_query = insert_data_origins_template.render(
             {
                 'name_string': source_meta['name'],
                 'json_data': json.dumps(source_meta, cls=SourceMetaEncoder)
@@ -274,7 +306,25 @@ class DatabaseInterface:
         )
 
         cursor = cls.get_connection_cursor()
-        cursor.execute(select_query)
+        cursor.execute(insert_query)
+
+        # TODO this is the new origin architecture
+        db_origin_id = DatabaseInterface.get_db_origin_id()
+        insert_info_source_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_information_source.j2", 'r').read()
+        insert_info_source_template = Template(insert_info_source_string)
+
+        insert_query = insert_info_source_template.render(
+            {
+                'domain': str(source_meta['namespace']),
+                'description': source_meta['source_description'],
+                'database_type_id': db_origin_id,
+                'url': source_meta['input_url']
+            }
+        )
+
+        cursor = cls.get_connection_cursor()
+        cursor.execute(insert_query)
+
         return
 
     @classmethod

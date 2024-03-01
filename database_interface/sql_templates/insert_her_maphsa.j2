@@ -1,4 +1,4 @@
-INSERT INTO her_maphsa (id, id_maphsa, comment, her_source_id)
-VALUES (DEFAULT, '{{ uuid }}', '{{ description }}', '{{ source_id }}')
+INSERT INTO her_maphsa (id, id_maphsa, comment, her_source_id, information_resource_id)
+VALUES (DEFAULT, '{{ uuid }}', '{{ description }}', '{{ source_id }}', {{information_resource_id}})
 RETURNING id
 ;
