@@ -14,6 +14,7 @@ from tqdm import tqdm
 from geojson import Point
 from shapely.geometry import shape
 
+import database_interface
 from database_interface import DatabaseInterface
 import source_parser
 from exceptions.exceptions import MAPHSAParserException, MAPHSAMissingMappingException
@@ -104,7 +105,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
 
     parse_her_geom(sicg_site_series, source_meta, her_maphsa_id)
     parse_her_loc_sum(sicg_site_series, source_meta, her_maphsa_id)
-    parse_her_admin_div(sicg_site_series, source_meta, her_maphsa_id)
+
 
     parse_arch_ass(sicg_site_series, source_meta, her_maphsa_id)
     # Parsing two branches simultaneously
@@ -114,6 +115,7 @@ def parse_sicg_her_maphsa(sicg_site_series: Series, source_meta: dict):
 
     parse_env_assessment(sicg_site_series, source_meta, her_maphsa_id)
     parse_her_cond_ass(sicg_site_series, source_meta, her_maphsa_id)
+    parse_her_admin_div(sicg_site_series, source_meta, her_maphsa_id)
 
 
 def process_geom(_lat, _long, _polygon):
@@ -202,6 +204,61 @@ def parse_her_loc_sum(sicg_site_series: Series, source_meta: dict, her_maphsa_id
 
     parse_her_loc_name(sicg_site_series, source_meta, her_loc_sum_id)
     parse_her_loc_type(sicg_site_series, source_meta, her_loc_sum_id)
+
+
+def get_her_admin_div_id(admin_div_name, admin_div_type):
+    results = DatabaseInterface.run_script('select_her_admin_div',
+                                           {'admin_div_name': admin_div_name, 'admin_div_type': admin_div_type},
+                                           True)
+
+    return results[0][0] if results else None
+
+
+def parse_her_admin_div(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
+    country_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type', 'Country')
+    municipality_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
+                                                                          'Municipality')
+    state_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
+                                                                   'State')
+
+    brazil_country_id = get_her_admin_div_id('Brazil', 'Country')
+    DatabaseInterface.insert_entity('her_maphsa_admin_div', {
+        'her_admin_div_id': brazil_country_id,
+        'her_maphsa_id': her_maphsa_id
+    })
+
+    state_id = get_her_admin_div_id(sicg_site_series['UF'], 'State')
+    if not pd.isna(sicg_site_series['UF']) and state_id is None:
+        state_value = sicg_site_series['UF']
+
+        DatabaseInterface.insert_entity('her_admin_div', {
+            'admin_div_name': state_value,
+            'admin_type': state_admin_type_id,
+            'her_maphsa_id': her_maphsa_id
+        })
+    elif not pd.isna(sicg_site_series['UF']):
+        DatabaseInterface.insert_entity('her_maphsa_admin_div', {
+            'her_admin_div_id': state_id,
+            'her_maphsa_id': her_maphsa_id
+        })
+
+    municipality_id = get_her_admin_div_id(sicg_site_series['Município'], 'Municipality')
+    if not pd.isna(sicg_site_series['Município']) and municipality_id is None:
+        municipality_value = sicg_site_series['Município']
+
+        DatabaseInterface.insert_entity('her_admin_div', {
+            'admin_div_name': municipality_value,
+            'admin_type': municipality_admin_type_id,
+            'her_maphsa_id': her_maphsa_id
+        })
+
+    elif not pd.isna(sicg_site_series['Município']):
+        DatabaseInterface.insert_entity('her_maphsa_admin_div', {
+            'her_admin_div_id': municipality_id,
+            'her_maphsa_id': her_maphsa_id
+        })
+
+    return
 
 
 def parse_her_loc_name(sicg_site_series: Series, source_meta: dict, her_loc_sum_id: int):
@@ -332,40 +389,6 @@ def parse_her_loc_type(sicg_site_series: Series, source_meta: dict, her_loc_sum_
     })
 
     return her_loc_type_id
-
-
-def parse_her_admin_div(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
-    country_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type', 'Country')
-    municipality_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
-                                                                          'Municipality')
-    state_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
-                                                                   'State')
-
-    DatabaseInterface.insert_entity('her_admin_div', {
-        'admin_div_name': 'Brazil',
-        'admin_type': country_admin_type_id,
-        'her_maphsa_id': her_maphsa_id
-    })
-
-    if not pd.isna(sicg_site_series['UF']):
-        state_value = sicg_site_series['UF']
-
-        DatabaseInterface.insert_entity('her_admin_div', {
-            'admin_div_name': state_value,
-            'admin_type': state_admin_type_id,
-            'her_maphsa_id': her_maphsa_id
-        })
-
-    if not pd.isna(sicg_site_series['Município']):
-        municipality_value = sicg_site_series['Município']
-
-        DatabaseInterface.insert_entity('her_admin_div', {
-            'admin_div_name': municipality_value,
-            'admin_type': municipality_admin_type_id,
-            'her_maphsa_id': her_maphsa_id
-        })
-
-    return
 
 
 def parse_arch_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
@@ -811,8 +834,7 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
 
     her_cond_ass_id = DatabaseInterface.insert_entity('her_cond_ass', {
         'her_maphsa_id': her_maphsa_id,
-        'recc_type': recc_type_list_id,
-        'cond_assessor': f"{source_meta['name']}:{sicg_site_series['X']}",
+        'recc_type': recc_type_list_id
     })
 
     # Disturbance Event

@@ -1,0 +1,3 @@
+SELECT * FROM her_admin_div had
+WHERE had.admin_div_name LIKE '{{admin_div_name}}'
+AND had.admin_type = (SELECT ct.concept_id  FROM concept_table ct  WHERE ct.concept_string LIKE '{{admin_div_type}}' AND ct.concept_thesaurus_id = (SELECT id FROM concept_thesaurus cth WHERE cth.name = 'Administrative Division Type'));

@@ -1,1 +1,8 @@
-INSERT INTO public.her_admin_div(id, admin_div_name, admin_type, her_maphsa_id) VALUES (DEFAULT, '{{admin_div_name}}', {{admin_type}}, {{her_maphsa_id}}) RETURNING id;
+WITH inserted_her_admin_div AS (
+    INSERT INTO public.her_admin_div(id, admin_div_name, admin_type) VALUES (DEFAULT, '{{admin_div_name}}', {{admin_type}}) RETURNING id
+ )
+
+INSERT INTO public.her_maphsa_admin_div
+(her_maphsa_id, her_admin_div_id)
+VALUES({{her_maphsa_id}}, (SELECT id FROM inserted_her_admin_div))
+RETURNING her_admin_div_id;

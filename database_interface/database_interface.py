@@ -77,13 +77,15 @@ class DatabaseInterface:
         curs.close()
 
     @classmethod
+    def insert_master_rows(cls):
+        curs = cls.get_connection_cursor()
+        curs.execute(open(db_settings.DB_MASTER_ROW_SCRIPT, 'r').read())
+        curs.close()
+
+    @classmethod
     def build_database(cls):
         curs = cls.get_connection_cursor()
         curs.execute(open(db_settings.DB_DEPLOYMENT_SCRIPT, 'r').read())
-        curs.close()
-
-        curs = cls.get_connection_cursor()
-        curs.execute(open(db_settings.DB_MASTER_ROW_SCRIPT, 'r').read())
         curs.close()
 
     @classmethod
@@ -369,6 +371,16 @@ class DatabaseInterface:
             print(f"Loading extent...")
             cls.load_extent()
             print(f"Done")
+
+        elif args.subcommand[1] == database_interface.INSERT_MASTER_ROWS:
+            print("Inserting master rows...")
+            try:
+                cls.insert_master_rows()
+            except psycopg2.errors.Error as e:
+                print("Error inserting master rows")
+                raise(e)
+            print("Done")
+
         else:
             print(f"Unknown database_interface subcommand mode {args.subcommand[1]}")
 

@@ -1,4 +1,4 @@
 INSERT INTO public.her_source
-(id, "location", data_origin_name)
-VALUES(DEFAULT, '{{location}}', '{{data_origin_name}}')
+(id, "location", data_origin_name, db_code)
+VALUES(DEFAULT, '{{location}}', '{{data_origin_name}}', '{{data_origin_name}}')
 RETURNING id;

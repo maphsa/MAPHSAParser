@@ -1,4 +1,10 @@
-INSERT INTO her_maphsa (id, id_maphsa, comment, her_source_id, information_resource_id)
-VALUES (DEFAULT, '{{ uuid }}', '{{ description }}', '{{ source_id }}', {{information_resource_id}})
-RETURNING id
-;
+WITH inserted_her_maphsa AS (
+    INSERT INTO her_maphsa (id, id_maphsa, comment, her_source_id)
+    VALUES (DEFAULT, '{{ uuid }}', '{{ description }}', '{{ source_id }}')
+    RETURNING id
+)
+
+INSERT INTO public.her_maphsa_information_resource
+(her_maphsa_id, information_resource_id)
+VALUES((SELECT id FROM inserted_her_maphsa), {{information_resource_id}})
+RETURNING her_maphsa_id;

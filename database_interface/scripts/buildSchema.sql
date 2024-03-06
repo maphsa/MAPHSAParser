@@ -1,5 +1,5 @@
 -- Created by Vertabelo (http://vertabelo.com)
--- Last modification date: 2024-02-29 14:45:41.531
+-- Last modification date: 2024-03-06 10:58:48.544
 
 -- tables
 -- Table: arch_ass
@@ -68,6 +68,17 @@ CREATE TABLE concept_thesaurus (
     CONSTRAINT concept_thesaurus_pk PRIMARY KEY (id)
 );
 
+-- Table: contribution_log
+CREATE TABLE contribution_log (
+    id serial  NOT NULL,
+    her_maphsa_id int  NOT NULL,
+    person_organization_resource_id int  NOT NULL,
+    information_resource_id int  NOT NULL,
+    contribution_date timestamp  NOT NULL,
+    comment varchar(512)  NOT NULL,
+    CONSTRAINT contribution_log_pk PRIMARY KEY (id)
+);
+
 -- Table: data_origin
 CREATE TABLE data_origin (
     name varchar(128)  NOT NULL,
@@ -121,7 +132,6 @@ CREATE TABLE her_admin_div (
     id serial  NOT NULL,
     admin_div_name varchar(100)  NULL,
     admin_type int  NOT NULL,
-    her_maphsa_id int  NOT NULL,
     CONSTRAINT her_admin_div_pk PRIMARY KEY (id)
 );
 
@@ -129,8 +139,8 @@ CREATE TABLE her_admin_div (
 CREATE TABLE her_cond_ass (
     id serial  NOT NULL,
     recc_type int  NOT NULL,
-    cond_assessor varchar(100)  NOT NULL,
     her_maphsa_id int  NOT NULL,
+    person_organization_resource_id int  NULL,
     CONSTRAINT her_cond_ass_pk PRIMARY KEY (id)
 );
 
@@ -219,8 +229,21 @@ CREATE TABLE her_maphsa (
     id_maphsa varchar(100)  NOT NULL,
     comment varchar(250)  NULL,
     her_source_id int  NOT NULL,
-    information_resource_id int  NOT NULL,
     CONSTRAINT her_maphsa_pk PRIMARY KEY (id)
+);
+
+-- Table: her_maphsa_admin_div
+CREATE TABLE her_maphsa_admin_div (
+    her_maphsa_id int  NOT NULL,
+    her_admin_div_id int  NOT NULL,
+    CONSTRAINT her_maphsa_admin_div_pk PRIMARY KEY (her_maphsa_id,her_admin_div_id)
+);
+
+-- Table: her_maphsa_information_resource
+CREATE TABLE her_maphsa_information_resource (
+    her_maphsa_id int  NOT NULL,
+    information_resource_id int  NOT NULL,
+    CONSTRAINT her_maphsa_information_resource_pk PRIMARY KEY (her_maphsa_id,information_resource_id)
 );
 
 -- Table: her_source
@@ -228,6 +251,7 @@ CREATE TABLE her_source (
     id serial  NOT NULL,
     location varchar(128)  NOT NULL,
     data_origin_name varchar(128)  NOT NULL,
+    db_code varchar(50)  NOT NULL,
     CONSTRAINT her_source_pk PRIMARY KEY (id)
 );
 
@@ -242,25 +266,25 @@ CREATE TABLE hydro_info (
 
 -- Table: information_resource
 CREATE TABLE information_resource (
-   id serial  NOT NULL,
-   id_maphsa varchar(128)  NOT NULL,
-   url varchar(128)  NULL,
-   bib_title varchar(128)  NULL,
-   bib_pub_date date  NULL,
-   bib_edition varchar(128)  NULL,
-   bib_issue varchar(128)  NULL,
-   bib_journal varchar(128)  NULL,
-   bib_pub_place varchar(128)  NULL,
-   bib_publisher varchar(128)  NULL,
-   bib_pages varchar(128)  NULL,
-   description varchar(256)  NULL,
-   inf_res_type int  NOT NULL,
-   CONSTRAINT information_resource_pk PRIMARY KEY (id)
+    id serial  NOT NULL,
+    id_maphsa varchar(128)  NOT NULL,
+    url varchar(128)  NULL,
+    bib_title varchar(128)  NULL,
+    bib_pub_date date  NULL,
+    bib_edition varchar(128)  NULL,
+    bib_issue varchar(128)  NULL,
+    bib_journal varchar(128)  NULL,
+    bib_pub_place varchar(128)  NULL,
+    bib_publisher varchar(128)  NULL,
+    bib_pages varchar(128)  NULL,
+    description varchar(256)  NULL,
+    inf_res_type int  NOT NULL,
+    CONSTRAINT information_resource_pk PRIMARY KEY (id)
 );
 
 -- Table: information_resource_author
 CREATE TABLE information_resource_author (
-    id int  NOT NULL,
+    id serial  NOT NULL,
     author_appellation varchar(128)  NOT NULL,
     information_resource_id int  NOT NULL,
     CONSTRAINT information_resource_author_pk PRIMARY KEY (id)
@@ -268,7 +292,7 @@ CREATE TABLE information_resource_author (
 
 -- Table: information_resource_editor
 CREATE TABLE information_resource_editor (
-    id int  NOT NULL,
+    id serial  NOT NULL,
     editor_apellation varchar(128)  NOT NULL,
     information_resource_id int  NOT NULL,
     CONSTRAINT information_resource_editor_pk PRIMARY KEY (id)
@@ -294,16 +318,23 @@ CREATE TABLE pers_org_res_adm_div (
 
 -- Table: person_organization_resource
 CREATE TABLE person_organization_resource (
-    id int  NOT NULL,
-    ip_maphsa varchar(128)  NOT NULL,
+    id serial  NOT NULL,
+    id_maphsa varchar(128)  NOT NULL,
     name varchar(128)  NOT NULL,
     place_address varchar(256)  NOT NULL,
     description varchar(256)  NOT NULL,
     person_organization_category int  NOT NULL,
-    actor_role_type int  NOT NULL,
     actor_role_type_from date  NOT NULL,
     actor_role_type_to date  NOT NULL,
+    actor_role_type int  NOT NULL,
     CONSTRAINT person_organization_resource_pk PRIMARY KEY (id)
+);
+
+-- Table: related_person_organization
+CREATE TABLE related_person_organization (
+    person_organization_1 int  NOT NULL,
+    person_organization_2 int  NOT NULL,
+    CONSTRAINT related_person_organization_pk PRIMARY KEY (person_organization_1,person_organization_2)
 );
 
 -- Table: risk_assessment
@@ -335,14 +366,6 @@ CREATE TABLE sites_timespace (
 );
 
 -- foreign keys
--- Reference: actor_role_type (table: person_organization_resource)
-ALTER TABLE person_organization_resource ADD CONSTRAINT actor_role_type
-    FOREIGN KEY (actor_role_type)
-    REFERENCES concept_list (concept_list_id)
-    NOT DEFERRABLE
-    INITIALLY IMMEDIATE
-;
-
 -- Reference: aher_loc_type_concept_table (table: her_loc_type)
 ALTER TABLE her_loc_type ADD CONSTRAINT aher_loc_type_concept_table
     FOREIGN KEY (her_loc_type)
@@ -471,6 +494,30 @@ ALTER TABLE built_comp ADD CONSTRAINT constr_tech_concept_list
     INITIALLY IMMEDIATE
 ;
 
+-- Reference: contribution_log_her_maphsa (table: contribution_log)
+ALTER TABLE contribution_log ADD CONSTRAINT contribution_log_her_maphsa
+    FOREIGN KEY (her_maphsa_id)
+    REFERENCES her_maphsa (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: contribution_log_information_resource (table: contribution_log)
+ALTER TABLE contribution_log ADD CONSTRAINT contribution_log_information_resource
+    FOREIGN KEY (information_resource_id)
+    REFERENCES information_resource (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: contribution_log_person_organization_resource (table: contribution_log)
+ALTER TABLE contribution_log ADD CONSTRAINT contribution_log_person_organization_resource
+    FOREIGN KEY (person_organization_resource_id)
+    REFERENCES person_organization_resource (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
 -- Reference: cult_aff_cert_concept_table (table: site_cult_aff)
 ALTER TABLE site_cult_aff ADD CONSTRAINT cult_aff_cert_concept_table
     FOREIGN KEY (cult_aff_certainty)
@@ -575,18 +622,18 @@ ALTER TABLE her_admin_div ADD CONSTRAINT her_admin_div_concept_table
     INITIALLY IMMEDIATE
 ;
 
--- Reference: her_admin_div_her_maphsa (table: her_admin_div)
-ALTER TABLE her_admin_div ADD CONSTRAINT her_admin_div_her_maphsa
+-- Reference: her_cond_ass_her_maphsa (table: her_cond_ass)
+ALTER TABLE her_cond_ass ADD CONSTRAINT her_cond_ass_her_maphsa
     FOREIGN KEY (her_maphsa_id)
     REFERENCES her_maphsa (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
--- Reference: her_cond_ass_her_maphsa (table: her_cond_ass)
-ALTER TABLE her_cond_ass ADD CONSTRAINT her_cond_ass_her_maphsa
-    FOREIGN KEY (her_maphsa_id)
-    REFERENCES her_maphsa (id)
+-- Reference: her_cond_ass_person_organization_resource (table: her_cond_ass)
+ALTER TABLE her_cond_ass ADD CONSTRAINT her_cond_ass_person_organization_resource
+    FOREIGN KEY (person_organization_resource_id)
+    REFERENCES person_organization_resource (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
@@ -719,6 +766,22 @@ ALTER TABLE her_loc_type ADD CONSTRAINT her_loc_typecert_concept_table
     INITIALLY IMMEDIATE
 ;
 
+-- Reference: her_maphsa_admin_div_her_admin_div (table: her_maphsa_admin_div)
+ALTER TABLE her_maphsa_admin_div ADD CONSTRAINT her_maphsa_admin_div_her_admin_div
+    FOREIGN KEY (her_admin_div_id)
+    REFERENCES her_admin_div (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: her_maphsa_admin_div_her_maphsa (table: her_maphsa_admin_div)
+ALTER TABLE her_maphsa_admin_div ADD CONSTRAINT her_maphsa_admin_div_her_maphsa
+    FOREIGN KEY (her_maphsa_id)
+    REFERENCES her_maphsa (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
 -- Reference: her_maphsa_her_source (table: her_maphsa)
 ALTER TABLE her_maphsa ADD CONSTRAINT her_maphsa_her_source
     FOREIGN KEY (her_source_id)
@@ -727,8 +790,16 @@ ALTER TABLE her_maphsa ADD CONSTRAINT her_maphsa_her_source
     INITIALLY IMMEDIATE
 ;
 
--- Reference: her_maphsa_information_resource (table: her_maphsa)
-ALTER TABLE her_maphsa ADD CONSTRAINT her_maphsa_information_resource
+-- Reference: her_maphsa_information_resource_her_maphsa (table: her_maphsa_information_resource)
+ALTER TABLE her_maphsa_information_resource ADD CONSTRAINT her_maphsa_information_resource_her_maphsa
+    FOREIGN KEY (her_maphsa_id)
+    REFERENCES her_maphsa (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: her_maphsa_information_resource_information_resource (table: her_maphsa_information_resource)
+ALTER TABLE her_maphsa_information_resource ADD CONSTRAINT her_maphsa_information_resource_information_resource
     FOREIGN KEY (information_resource_id)
     REFERENCES information_resource (id)
     NOT DEFERRABLE
@@ -863,6 +934,14 @@ ALTER TABLE pers_org_res_adm_div ADD CONSTRAINT pers_org_res_adm_div_pers_org_re
     INITIALLY IMMEDIATE
 ;
 
+-- Reference: person_organization_resource_actor_role_concept_table (table: person_organization_resource)
+ALTER TABLE person_organization_resource ADD CONSTRAINT person_organization_resource_actor_role_concept_table
+    FOREIGN KEY (actor_role_type)
+    REFERENCES concept_table (concept_id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
 -- Reference: person_organization_resource_adm_div_her_admin_div (table: pers_org_res_adm_div)
 ALTER TABLE pers_org_res_adm_div ADD CONSTRAINT person_organization_resource_adm_div_her_admin_div
     FOREIGN KEY (her_admin_div_id)
@@ -871,8 +950,8 @@ ALTER TABLE pers_org_res_adm_div ADD CONSTRAINT person_organization_resource_adm
     INITIALLY IMMEDIATE
 ;
 
--- Reference: person_organization_resource_concept_table (table: person_organization_resource)
-ALTER TABLE person_organization_resource ADD CONSTRAINT person_organization_resource_concept_table
+-- Reference: person_organization_resource_org_cat_concept_table (table: person_organization_resource)
+ALTER TABLE person_organization_resource ADD CONSTRAINT person_organization_resource_org_cat_concept_table
     FOREIGN KEY (person_organization_category)
     REFERENCES concept_table (concept_id)
     NOT DEFERRABLE
@@ -891,6 +970,22 @@ ALTER TABLE arch_ass ADD CONSTRAINT prev_research_concept_list
 ALTER TABLE her_cond_ass ADD CONSTRAINT recc_type_concept_list
     FOREIGN KEY (recc_type)
     REFERENCES concept_list (concept_list_id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: related_person_organization_person_organization_resource (table: related_person_organization)
+ALTER TABLE related_person_organization ADD CONSTRAINT related_person_organization_person_organization_resource
+    FOREIGN KEY (person_organization_2)
+    REFERENCES person_organization_resource (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: related_person_organization_person_organization_resource_2 (table: related_person_organization)
+ALTER TABLE related_person_organization ADD CONSTRAINT related_person_organization_person_organization_resource_2
+    FOREIGN KEY (person_organization_1)
+    REFERENCES person_organization_resource (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
@@ -984,4 +1079,3 @@ ALTER TABLE env_assessment ADD CONSTRAINT topogr_concept_list
 ;
 
 -- End of file.
-
