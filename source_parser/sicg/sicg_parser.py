@@ -861,7 +861,7 @@ def parse_her_cond_ass(sicg_site_series: Series, source_meta: dict, her_maphsa_i
     dist_cause_id = dist_cause_source_ids[dist_cause_value]
 
     dist_effect_source_ids = concept_id_mappings['Disturbance Effect']
-    missing_dist_effect_type_id = dist_effect_source_ids['Not Defined']
+    missing_dist_effect_type_id = dist_effect_source_ids['Not Visible/Known']
 
     dist_effect_list_id = DatabaseInterface.create_concept_list('Disturbance Effect', [missing_dist_effect_type_id])
 
