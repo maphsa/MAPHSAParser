@@ -1,6 +1,14 @@
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL ON SCHEMA public TO public;
-
 CREATE EXTENSION postgis;
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres;
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO maphsa;
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO maphsa_team;
+
+GRANT USAGE ON SCHEMA project TO maphsa_team;
+GRANT SELECT ON ALL TABLES IN SCHEMA project TO maphsa_team;
+
+

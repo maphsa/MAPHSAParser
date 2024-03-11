@@ -1,0 +1,11 @@
+DROP FUNCTION IF EXISTS create_empty_concept_list;
+CREATE OR REPLACE FUNCTION create_empty_concept_list(concept_list_type varchar(128)) RETURNS integer AS
+$$
+DECLARE
+   new_list_id integer;
+BEGIN
+   INSERT INTO public.concept_list VALUES(DEFAULT, concept_list_type) RETURNING concept_list_id INTO new_list_id;
+   RETURN new_list_id;
+END
+$$
+  LANGUAGE 'plpgsql';

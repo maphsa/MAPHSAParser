@@ -65,6 +65,20 @@ class DatabaseInterface:
         return cls.get_connection().cursor()
 
     @classmethod
+    def add_schema_triggers(cls):
+        cls.run_script(db_settings.DB_CONCEPT_LIST_FUNCTION_SCRIPT, {})
+        with open(f"{db_settings.DB_SCRIPT_PATH}/conceptListTriggeredTables.json", 'r') as infile:
+            concept_list_triggered_tables = json.load(infile)
+            for cltt in concept_list_triggered_tables:
+                (table_name, column_name, thesaurus_name) = cltt
+
+                cls.run_script(db_settings.DB_CONCEPT_LIST_TRIGGER_SCRIPT, {
+                    'table_name': table_name,
+                    'column_name': column_name,
+                    'thesaurus_name': thesaurus_name
+                })
+
+    @classmethod
     def run_post_process_command(cls, ppc):
         curs = cls.get_connection_cursor()
         curs.execute(open(f"{db_settings.DB_SCRIPT_PATH}/{ppc}", 'r').read())
@@ -359,7 +373,7 @@ class DatabaseInterface:
         if args.subcommand[1] == database_interface.BUILD_DATABASE:
             print(f"Rebuilding database {db_settings.DB_NAME} at {db_settings.DB_HOST}:{db_settings.DB_PORT} using "
                   f"{db_settings.DB_DEPLOYMENT_SCRIPT}")
-            confirmation_prompt = input("Proceed?(y/n)\n")
+            confirmation_prompt = input("Proceed?(y/n)\n") if args.yes is False else 'y'
 
             if confirmation_prompt != 'y':
                 quit()
@@ -368,6 +382,8 @@ class DatabaseInterface:
             cls.purge_database()
             print(f"Building database...")
             cls.build_database()
+            print(f"Adding schema triggers...")
+            cls.add_schema_triggers()
             print(f"Loading extent...")
             cls.load_extent()
             print(f"Done")

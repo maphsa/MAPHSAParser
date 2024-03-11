@@ -1,0 +1,19 @@
+
+
+DROP TRIGGER IF EXISTS {{table_name}}_{{column_name}}_add_empty_list_trigger ON {{table_name}};
+DROP FUNCTION IF EXISTS {{table_name}}_{{column_name}}_add_empty_list;
+CREATE OR REPLACE FUNCTION {{table_name}}_{{column_name}}_add_empty_list()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.{{column_name}} IS NULL THEN
+    NEW.{{column_name}} := create_empty_concept_list('{{thesaurus_name}}');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+ 
+CREATE TRIGGER {{table_name}}_{{column_name}}_add_empty_list_trigger
+BEFORE INSERT ON {{table_name}}
+FOR EACH ROW
+EXECUTE PROCEDURE {{table_name}}_{{column_name}}_add_empty_list();
+

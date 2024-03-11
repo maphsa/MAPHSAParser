@@ -1,0 +1,62 @@
+[
+    [
+        "arch_ass",
+        "prev_res_act",
+        "Previous Research Activities"
+    ],
+    [
+        "built_comp",
+        "comp_mat",
+        "Component Material"
+    ],
+    [
+        "built_comp",
+        "comp_const_tech",
+        "Component Construction Technique"
+    ],
+    [
+        "her_find",
+        "art_cat_concept_list_id",
+        "Artefact Category"
+    ],
+    [
+        "env_assessment",
+        "topo_type",
+        "Topography"
+    ],
+    [
+        "env_assessment",
+        "lcov_type",
+        "Land Cover"
+    ],
+    [
+        "env_assessment",
+        "bedr_geo",
+        "Bedrock Geology"
+    ],
+    [
+        "env_assessment",
+        "soil_class",
+        "Soil Classification"
+    ],
+    [
+        "env_assessment",
+        "l_use_type",
+        "Land Use"
+    ],
+    [
+        "hydro_info",
+        "hydro_type",
+        "Hydrology Type"
+    ],
+    [
+        "disturbance_event",
+        "dist_cause",
+        "Disturbance Effect"
+    ],
+    [
+        "her_cond_ass",
+        "recc_type",
+        "Recommendation Type"
+    ]
+]

@@ -18,6 +18,7 @@ cli_parser.add_argument('subcommand', nargs='+', type=str, help='main subcommand
 cli_parser.add_argument('-i', '--input', nargs='*', type=pathlib.Path, help='input files')
 cli_parser.add_argument('-sg', '--supp', action='store_true', help='add supplementary geo')
 cli_parser.add_argument('-f', '--fake', action='store_true', help='fake insertion')
+cli_parser.add_argument('-y', '--yes', action='store_true', help='confirma action')
 
 args: argparse.Namespace = cli_parser.parse_args()
 
