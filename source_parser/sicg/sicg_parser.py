@@ -636,43 +636,51 @@ def parse_built_comp_her_feature(sicg_site_series: Series, source_meta: dict, he
     return built_comp_id, her_maphsa_id
 
 
-def parse_built_comp(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
+def parse_built_comp(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
     estruturas_value = sicg_site_series['estruturas']
 
     comp_type_concept_names = mappings.MapperManager.get_mapper('sicg', 'built_comp', 'comp_type')
     comp_type_concept_ids = DatabaseInterface.get_concept_id_mappings()['Component Type']
 
-    comp_type_concept_name = comp_type_concept_names.get_field_mapping(estruturas_value)
+    comp_type_concept_names = comp_type_concept_names.get_field_mapping(estruturas_value, True)
 
-    comp_type = comp_type_concept_ids[comp_type_concept_name]
+    built_comp_ids = []
+    for comp_type_concept_name in comp_type_concept_names:
+        comp_type = comp_type_concept_ids[comp_type_concept_name]
 
-    built_comp_id = DatabaseInterface.insert_entity('built_comp', {
-        'her_maphsa_id': her_maphsa_id,
-        'comp_type': comp_type,
-        'comp_mat': 'NULL',
-        'comp_const_tech': 'NULL'
-    })
+        built_comp_id = DatabaseInterface.insert_entity('built_comp', {
+            'her_maphsa_id': her_maphsa_id,
+            'comp_type': comp_type,
+            'comp_mat': 'NULL',
+            'comp_const_tech': 'NULL'
+        })
 
-    return built_comp_id
+        built_comp_ids.append(built_comp_id)
+
+    return built_comp_ids
 
 
-def parse_her_feature(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:
+def parse_her_feature(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int):
     estruturas_value = sicg_site_series['estruturas']
 
     feat_type_concept_names = mappings.MapperManager.get_mapper('sicg', 'her_feature', 'feat_type')
     feat_type_concept_ids = DatabaseInterface.get_concept_id_mappings()['Feature Type']
 
-    feat_type_concept_name = feat_type_concept_names.get_field_mapping(estruturas_value)
+    feat_type_concept_names = feat_type_concept_names.get_field_mapping(estruturas_value, True)
 
-    feat_type = feat_type_concept_ids[feat_type_concept_name]
+    her_feature_ids = []
+    for feat_type_concept_name in feat_type_concept_names:
+        feat_type = feat_type_concept_ids[feat_type_concept_name]
 
-    her_feature_id = DatabaseInterface.insert_entity('her_feature', {
-        'her_maphsa_id': her_maphsa_id,
-        'feat_type': feat_type,
-        'feat_count': 1
-    })
+        her_feature_id = DatabaseInterface.insert_entity('her_feature', {
+            'her_maphsa_id': her_maphsa_id,
+            'feat_type': feat_type,
+            'feat_count': 1
+        })
 
-    return her_feature_id
+        her_feature_ids.append(her_feature_id)
+
+    return her_feature_ids
 
 
 def parse_her_find(sicg_site_series: Series, source_meta: dict, her_maphsa_id: int) -> int:

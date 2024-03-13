@@ -22,14 +22,17 @@ class SICGMapper:
         source_value = re.sub(r'[.,()¿?]', '', source_value)
         return source_value
 
-    def get_field_mapping(self, _source_value: str) -> str:
+    def get_field_mapping(self, _source_value: str, _multi_value: bool = False):
 
         source_value = self.filter_source_value(_source_value)
 
         if source_value not in self.field_mappings.keys():
             self.report_missing_value(_source_value, source_value)
 
-        return self.field_mappings[source_value] if source_value in self.field_mappings.keys() else None
+        if not _multi_value:
+            return self.field_mappings[source_value] if source_value in self.field_mappings.keys() else None
+        else:
+            return [v for v in self.field_mappings[source_value]]
 
     def report_missing_value(self, _source_value, source_value):
         message = f"Unable to find mapping in {self.source_name} for value {_source_value} as {source_value}"
