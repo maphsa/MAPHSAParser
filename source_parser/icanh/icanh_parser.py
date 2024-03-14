@@ -214,26 +214,47 @@ def parse_her_loc_type(icanh_site_series: Series, source_meta: dict, her_loc_sum
     return
 
 
+def get_her_admin_div_id(admin_div_name, admin_div_type):
+    results = DatabaseInterface.run_script('select_her_admin_div',
+                                           {'admin_div_name': admin_div_name, 'admin_div_type': admin_div_type},
+                                           True)
+
+    return results[0][0] if results else None
+
+
 def parse_her_admin_div(icanh_site_series: Series, source_meta: dict, her_maphsa_id: int):
     country_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type', 'Country')
     state_admin_type_id = DatabaseInterface.get_concept_id_mapping('Administrative Division Type',
                                                                    'Municipality')
 
-    DatabaseInterface.insert_entity('her_admin_div', {
-        'admin_div_name': 'Colombia',
-        'admin_type': country_admin_type_id,
+    colombia_country_id = get_her_admin_div_id('Colombia', 'Country')
+
+    DatabaseInterface.insert_entity('her_maphsa_admin_div', {
+        'her_admin_div_id': colombia_country_id,
         'her_maphsa_id': her_maphsa_id
     })
 
     admin_div_name = icanh_site_series['Administrative Division Name']
-    admin_type_value = icanh_site_series['Administrative Division Type']
-    if not pd.isna(admin_div_name) and pd.isna(admin_type_value):
-        admin_type = map_icanh_value(admin_type_value, 'Administrative Division Type',
-                                       'her_admin_div', 'admin_type')
+    admin_type_value = str(icanh_site_series['Administrative Division Type'])
 
+    if pd.isna(admin_div_name) or pd.isna(admin_type_value):
+        return
+
+    admin_type_id = map_icanh_value(admin_type_value, 'Administrative Division Type',
+                                 'her_admin_div', 'admin_type')
+
+    her_adm_div_id = get_her_admin_div_id(admin_div_name, admin_type_value)
+
+    if her_adm_div_id is None:
         DatabaseInterface.insert_entity('her_admin_div', {
             'admin_div_name': admin_div_name,
-            'admin_type': admin_type,
+            'admin_type': admin_type_id,
+            'her_maphsa_id': her_maphsa_id
+        })
+
+    else:
+        DatabaseInterface.insert_entity('her_maphsa_admin_div', {
+            'her_admin_div_id': her_adm_div_id,
             'her_maphsa_id': her_maphsa_id
         })
 
