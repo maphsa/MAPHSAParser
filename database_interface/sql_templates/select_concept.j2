@@ -1,0 +1,5 @@
+SELECT c.concept_id as concept_id, c.concept_string as concept_name, t.name as thesaurus_name
+FROM public.concept_table as c JOIN public.concept_thesaurus as t
+ON c.concept_thesaurus_id = t.id
+WHERE t.name = '{{thesaurus_name}}'
+AND c.concept_string = '{{concept_string}}';

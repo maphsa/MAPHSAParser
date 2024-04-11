@@ -117,20 +117,63 @@ class DatabaseInterface:
         subprocess.run(load_extent_command, text=True, shell=True)
 
     @classmethod
-    def load_arches_concepts(cls, concept_data: dict):
-        cls.insert_concepts(concept_data)
+    def filter_concept_string(cls, cs: str) -> str:
+        return cs.replace("'", "''")
 
     @classmethod
-    def insert_concepts(cls, concept_data: dict):
+    def concept_is_present(cls, concept_string, thesaurus_name):
+
+        select_concept_template = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/select_concept.j2", 'r').read()
+        j2_template = Template(select_concept_template)
+        select_concept_query = j2_template.render({'concept_string': concept_string,
+                                                   'thesaurus_name': thesaurus_name
+                                                   })
+        try:
+            curs = cls.get_connection_cursor()
+            curs.execute(select_concept_query)
+        except Exception as e:
+            print(f"{type(e)} occurred while selecting concept {concept_string}")
+            print(e)
+
+        cardinality = len(curs.fetchall())
+
+        if cardinality > 1:
+            raise ValueError(f"{concept_string} is present more than once in thesaurus {thesaurus_name}")
+
+        return cardinality == 1
+
+    @classmethod
+    def filter_concepts_to_append(cls, concept_data) -> dict:
+        concept_data['concepts'] = {concept_string: description
+                                    for concept_string, description in concept_data['concepts'].items()
+                                    if not
+                                    DatabaseInterface.concept_is_present(cls.filter_concept_string(concept_string),
+                                                                         concept_data['thesaurus_title'])}
+        print(f"{list(concept_data['concepts'].keys())} "
+              f"new concepts found in {concept_data['thesaurus_title']}")
+        return concept_data
+
+    @classmethod
+    def insert_concepts(cls, concept_data: dict, append: bool = False, confirm: bool = False):
+
+        db_settings.SKIP_INSERT_CONCEPT_CONFIRMATION = confirm | db_settings.SKIP_INSERT_CONCEPT_CONFIRMATION
+
+        if append:
+            DatabaseInterface.filter_concepts_to_append(concept_data)
 
         confirmation_prompt = ''
 
         thesaurus_name = concept_data['thesaurus_title']
-        thesaurus_size = len(concept_data['concepts'])
+        concept_cardinality = len(concept_data['concepts'])
+
+        if append and concept_cardinality == 0:
+            print(f"No new concepts to append to {thesaurus_name}, skipping")
+            return
 
         while not db_settings.SKIP_INSERT_CONCEPT_CONFIRMATION and confirmation_prompt not in ['y', 'n', 'a']:
-            confirmation_prompt = input(f"Insert thesaurus {thesaurus_name} "
-                                        f"including {thesaurus_size} concepts?(y/n/a)\n")
+            verb = "Insert" if not append else "Append"
+            confirmation_prompt = input(f"{verb} {concept_cardinality} new concepts to thesaurus "
+                                        f"{thesaurus_name}? (y/n/a)\n")
 
         if confirmation_prompt == 'n':
             return
@@ -138,27 +181,53 @@ class DatabaseInterface:
         if confirmation_prompt == 'a':
             db_settings.SKIP_INSERT_CONCEPT_CONFIRMATION = True
 
-        print(f"Inserting thesaurus {thesaurus_name} including {thesaurus_size} concepts")
-
-        insert_thesaurus_template = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_thesaurus.j2", 'r').read()
-        j2_template = Template(insert_thesaurus_template)
-        insert_query = j2_template.render({'thesaurus_id': 'DEFAULT',
-                                           'thesaurus_name': thesaurus_name,
-                                           'thesaurus_description': thesaurus_name
-                                           })
-
-        insert_concept_template = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_concept.j2", 'r').read()
         curs = cls.get_connection_cursor()
 
-        try:
-            curs.execute(insert_query)
-        except Exception as e:
-            print(f"{type(e)} occurred while inserting thesaurus {thesaurus_name}")
-            print(e)
+        if not append:
+            print(f"Inserting thesaurus {thesaurus_name} including {concept_cardinality} concepts")
 
-        thesaurus_index = curs.fetchone()[0]
+            insert_thesaurus_template = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_thesaurus.j2", 'r').read()
+            j2_template = Template(insert_thesaurus_template)
+            insert_query = j2_template.render({'thesaurus_id': 'DEFAULT',
+                                               'thesaurus_name': thesaurus_name,
+                                               'thesaurus_description': thesaurus_name
+                                               })
+
+            try:
+                curs.execute(insert_query)
+                thesaurus_index = curs.fetchone()[0]
+            except Exception as e:
+                print(f"{type(e)} occurred while appending to thesaurus {thesaurus_name}")
+                print(e)
+                raise e
+
+        else:
+            print(f"Appending {concept_cardinality} new concepts into thesaurus {thesaurus_name}")
+            select_thesaurus_template = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/select_thesaurus.j2", 'r').read()
+            j2_template = Template(select_thesaurus_template)
+            select_query = j2_template.render({'thesaurus_name': thesaurus_name})
+
+            try:
+                curs.execute(select_query)
+                thesaurus_index = curs.fetchone()[0]
+            except TypeError as te:
+                print(f"{te}")
+                print(f"Thesaurus {thesaurus_name} missing? Perhaps use non-append concept insertion")
+                curs.close()
+                raise te
+            except Exception as e:
+                print(f"{type(e)} occurred while selecting thesaurus {thesaurus_name}")
+                print(e)
+                raise e
+
+        insert_concept_template = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_concept.j2", 'r').read()
 
         for (concept_string, concept_description) in concept_data['concepts'].items():
+            if append and DatabaseInterface.concept_is_present(concept_string, thesaurus_name):
+                continue
+            elif append:
+                print(f"Appending concept {concept_string} to thesaurus {thesaurus_name}")
+
             # TODO sloppy hack, this might be a more general problem with all the strings
             concept_string = concept_string.replace("'", "''")
             concept_description = concept_description.replace("'", "''") if concept_description else ""
@@ -174,6 +243,7 @@ class DatabaseInterface:
             except Exception as e:
                 print(f"{type(e)} occurred while inserting concept {concept_string}")
                 print(e)
+                raise e
 
         curs.close()
 
@@ -293,7 +363,9 @@ class DatabaseInterface:
     @classmethod
     def get_db_origin_id(cls):
 
-        select_query = "SELECT concept_id FROM concept_table ct WHERE ct.concept_thesaurus_id = (SELECT cth.id FROM concept_thesaurus cth WHERE cth.name LIKE 'Information Resource Type') AND ct.concept_string LIKE 'Database';"
+        select_query = ("SELECT concept_id FROM concept_table ct WHERE ct.concept_thesaurus_id = "
+                        "(SELECT cth.id FROM concept_thesaurus cth WHERE cth.name LIKE 'Information Resource Type') "
+                        "AND ct.concept_string LIKE 'Database';")
 
         cursor = cls.get_connection_cursor()
         cursor.execute(select_query)
@@ -305,7 +377,7 @@ class DatabaseInterface:
         insert_data_origins_string = open(f"{db_settings.DB_TEMPLATE_URL_PATH}/insert_data_origin.j2", 'r').read()
         insert_data_origins_template = Template(insert_data_origins_string)
 
-        # Using IVI's soulution from https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
+        # Using IVI's solution from https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
         class SourceMetaEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, UUID):

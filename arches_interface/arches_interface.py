@@ -25,6 +25,18 @@ def process_subcommand(args: argparse.Namespace):
             concept_data_batch.append(arches_interface.thesaurus_parser.extract_thesaurus(input_item))
 
         for concept_data in concept_data_batch:
-            database_interface.DatabaseInterface.insert_concepts(concept_data)
+            database_interface.DatabaseInterface.insert_concepts(concept_data,
+                                                                 append=args.append, confirm=args.yes)
 
+    elif subcommand == arches_interface.PRINT_CONCEPTS_SUBCOMMAND:
+        concept_id_mappings = database_interface.DatabaseInterface.get_concept_id_mappings()
+        concept_count = 0
+        for thesaurus_index, thesaurus_name in enumerate(list(concept_id_mappings.keys())):
+            print(f"{thesaurus_index}-{thesaurus_name}")
+            for index, concept in enumerate(list(concept_id_mappings[thesaurus_name].keys())):
+                print(f"\t{index}-{concept}")
+            concept_count = concept_count + len(concept_id_mappings[thesaurus_name].keys())
+
+        print(f"{len(concept_id_mappings.keys())} dictionaries summing {concept_count} concepts overall")
+        exit(0)
 
